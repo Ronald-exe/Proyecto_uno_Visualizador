@@ -12,4 +12,6 @@ _start:
     mov rdx,hi_tamano
     syscall
 
-    
+    mov rax,60
+    mov rdi,0
+    syscall
