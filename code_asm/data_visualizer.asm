@@ -4,10 +4,11 @@
 ; ld -o data_visualizer_execute data_visualizer.o
 ; ./data_visualizer_execute
 
+;----------includes----------
+
 section .data
-    ; --- The message to be printed ---
-    msg db "Hello World", 0xa ; The string, 0xa is the newline character
-    msg_len equ $ - msg      ; Calculate the length of the string
+;----------Read----------
+    filename db "My_list",0xa
 
     ; --- ANSI Escape Codes for Colors ---
     ; Format: \x1b[<text_color>;<background_color>m
@@ -29,19 +30,42 @@ section .data
     reset_color db 0x1b, "[0m"
     reset_color_len equ $ - reset_color
 
+                                                    ;Un
+section .bss                                       
+    ; --- The message to be printed ---
+    msg resb 128
+    msg_len equ $ - msg                             ; Calculate the length of the string
+
+    msg1 resb 128                                   ; The string, 0xa is the newline character
+    msg1_len equ $ - msg1                           ; Calculate the length of the string
+
+    msg2 resb 124                                   ;The string, 0xa is the newline character
+    msg2_len equ $ - msg2                           ; Calculate the length of the string
+
+
+
+
 section .text
     global _start
 
 _start:
     ; --- First Print: Red on Blue ---
     ; Set the color
+
     mov rax, 1              ; syscall number for sys_write
     mov rdi, 1              ; file descriptor 1 is stdout
     mov rsi, color1         ; pointer to the color1 string
     mov rdx, color1_len     ; length of the color1 string
     syscall                 ; call the kernel
 
-    ; Print the message
+    ; read the message
+    mov rax, 0
+    mov rdi, 0
+    mov rsi, msg
+    mov rdx, msg_len
+    syscall
+
+    ; write the message
     mov rax, 1
     mov rdi, 1
     mov rsi, msg
@@ -57,12 +81,20 @@ _start:
     mov rdx, color2_len
     syscall
 
-    ; Print the message
+    ; read the message
+    mov rax, 0
+    mov rdi, 0
+    mov rsi, msg1
+    mov rdx, msg1_len
+    syscall
+
+    ; write the message
     mov rax, 1
     mov rdi, 1
-    mov rsi, msg
-    mov rdx, msg_len
+    mov rsi, msg1
+    mov rdx, msg1_len
     syscall
+
 
     ; --- Third Print: Magenta on Cyan ---
     ; Set the color
@@ -72,12 +104,20 @@ _start:
     mov rdx, color3_len
     syscall
 
-    ; Print the message
+    ; read the message
+    mov rax, 0
+    mov rdi, 0
+    mov rsi, msg2
+    mov rdx, msg2_len
+    syscall
+
+    ; Write the message
     mov rax, 1
     mov rdi, 1
-    mov rsi, msg
-    mov rdx, msg_len
+    mov rsi, msg2
+    mov rdx, msg2_len
     syscall
+
 
     ; --- Reset the terminal color to default ---
     mov rax, 1
