@@ -1,3 +1,7 @@
+; nasm -f elf64 -o read_text.o read_text.asm
+; ld -o read_text_execute read_text.o
+; ./read_text_execute
+
 %include "linux64.inc"
 section .data
     filename db "my_list.txt",0

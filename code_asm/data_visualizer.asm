@@ -1,6 +1,6 @@
 ; Filename: colorful_hello_64.asm
 ; To assemble and run:
-;  nasm -f elf64 -o data_visualizer.o data_visualizer.asm
+; nasm -f elf64 -o data_visualizer.o data_visualizer.asm
 ; ld -o data_visualizer_execute data_visualizer.o
 ; ./data_visualizer_execute
 
