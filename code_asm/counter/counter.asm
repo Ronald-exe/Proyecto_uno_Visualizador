@@ -38,12 +38,12 @@ read_loop:
     cmp rax, 0
     je done_file            ; fin del archivo
 
-    mov rdx, rax            ; cantidad de bytes leídos
+    mov rdx, rax            ; cantidad de bytes leídos se almacen de rax a rdx
 
 ;------Contar palabras en este bloque-------
     xor rcx, rcx            ; contador de palabras en bloque
     xor rbx, rbx            ; flag inside-word
-    mov rsi, text
+    mov rsi, text           ; puntero en lectura del texto
     mov r9, rdx             ; límite del buffer leído
 
 count_loop:
