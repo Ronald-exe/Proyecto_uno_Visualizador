@@ -1,210 +1,365 @@
-;nasm -f elf64 -o  counter_per_word.o counter_per_word.asm
-;ld -o  counter_per_word_execute  counter_per_word.o
-;./counter_per_word_execute
-
+; ============================================
+; Visualizador de Inventario - NASM x86_64 Linux
+; ============================================
+; Compilación:
+; nasm -f elf64 -o inventory.o inventory.asm
+; ld -o inventory inventory.o
+; ./inventory
 %include "linux64.inc"
 
 section .data
-    filename   db "my_list.txt",0
-    sep_colon  db ": ",0
-    nl         db 10
+    file_inventory db "my_list.txt",0
+    file_config    db "config.ini",0
+    nl             db 10
+    sep_colon      db ": ",0
+    default_char   db '#',0
+    default_fg     db 92      ; verde brillante
+    default_bg     db 40      ; fondo negro
 
 section .bss
-    text      resb 256
-    len_count resb 64      ; contador de palabras por longitud (1..64)
-    max_len   resb 1       ; longitud máxima vista (en bytes)
+    buffer      resb 256           ; lectura de archivos
+    temp_word   resb 16            ; palabra temporal
+    word_table  resb 4096          ; hasta 256 palabras de 16 bytes
+    word_count  resd 256
+    num_words   resd 1
+
+    config_char resb 1
+    config_fg   resb 1
+    config_bg   resb 1
 
 section .text
-    global _start
-
+global _start
 _start:
-    ; --- abrir archivo ---
-    mov     rax, 2                 ; SYS_open
-    mov     rdi, filename
-    xor     rsi, rsi               ; O_RDONLY
-    xor     rdx, rdx
-    syscall
-    cmp     rax, 0
-    js      open_fail
-    mov     r12, rax               ; fd (guardado en r12)
 
-    xor     r9, r9                 ; longitud actual de la palabra (contador)
-    xor     r10, r10               ; índice en buffer
-    xor     r11, r11               ; bytes leídos en buffer
-    xor     rbx, rbx               ; limpiar rbx por seguridad
+; -----------------------------
+; 1️⃣ Leer config.ini
+; -----------------------------
+    mov rdi, file_config
+    call read_config
 
-read_loop:
-    mov     rax, 0                 ; SYS_read
-    mov     rdi, r12
-    mov     rsi, text
-    mov     rdx, 256
-    syscall
-    cmp     rax, 0
-    js      read_fail
-    je      eof_flush              ; si EOF, flusheamos última palabra (si hay)
-    mov     r10, 0                 ; índice buffer = 0
-    mov     r11, rax               ; bytes leídos
+; -----------------------------
+; 2️⃣ Leer archivo de inventario
+; -----------------------------
+    mov rdi, file_inventory
+    call read_inventory
 
-next_char:
-    cmp     r10, r11
-    je      read_loop
+; -----------------------------
+; 3️⃣ Ordenar alfabéticamente
+; -----------------------------
+    call bubble_sort
 
-    mov     al, [text + r10]
-    cmp     al, ' '
-    je      end_word
-    cmp     al, 10
-    je      end_word
+; -----------------------------
+; 4️⃣ Imprimir gráfico de barras
+; -----------------------------
+    call print_graph
 
-    ; dentro de palabra
-    inc     r9
-    cmp     r9, 64                 ; límite razonable (1..64)
-    ja      too_long
-    inc     r10
-    jmp     next_char
-
-end_word:
-    cmp     r9, 0
-    je      skip_sep               ; separadores seguidos
-    ; palabra terminada: actualizar contador por longitud
-    xor     rbx, rbx               ; limpiar rbx antes de usar bl
-    mov     bl, r9b                ; longitud (1..64)
-    dec     bl                     ; índice 0 = palabras de 1 char
-    cmp     rbx, 63
-    ja      skip_sep               ; protección extra
-    mov     al, [len_count + rbx]
-    inc     al
-    mov     [len_count + rbx], al
-    ; actualizar max_len (byte)
-    mov     al, [max_len]
-    cmp     r9b, al
-    jbe     .no_upd
-    mov     [max_len], r9b
-.no_upd:
-    xor     r9, r9
-skip_sep:
-    inc     r10
-    jmp     next_char
-
-too_long:
-    ; si se pasa del límite, descartar esta palabra
-    xor     r9, r9
-    inc     r10
-    jmp     next_char
-
-eof_flush:
-    ; si el archivo no acaba en separador, la última palabra queda en r9
-    cmp     r9, 0
-    je      close_file
-    xor     rbx, rbx
-    mov     bl, r9b
-    dec     bl
-    cmp     rbx, 63
-    ja      close_file
-    mov     al, [len_count + rbx]
-    inc     al
-    mov     [len_count + rbx], al
-    mov     al, [max_len]
-    cmp     r9b, al
-    jbe     close_file
-    mov     [max_len], r9b
-
-close_file:
-    mov     rax, 3                 ; SYS_close
-    mov     rdi, r12
-    syscall
-    jmp     print_results
-
-open_fail:
-    mov     rax, 60
-    mov     rdi, 1
+; -----------------------------
+; 5️⃣ Salir
+; -----------------------------
+    mov rax, 60
+    xor rdi, rdi
     syscall
 
-read_fail:
-    cmp     r12, 0
-    jl      short_exit
-    mov     rax, 3
-    mov     rdi, r12
+; ====================================================
+; Funciones
+; ====================================================
+
+; -----------------------------
+; read_config
+; -----------------------------
+; rdi = puntero a archivo config.ini
+read_config:
+    ; por simplicidad, usamos valores por defecto
+    mov al, [default_char]
+    mov [config_char], al
+    mov al, [default_fg]
+    mov [config_fg], al
+    mov al, [default_bg]
+    mov [config_bg], al
+    ret
+
+; -----------------------------
+; read_inventory
+; -----------------------------
+; rdi = puntero a archivo inventory.txt
+read_inventory:
+    ; abrir archivo
+    mov rax, 2
+    mov rsi, 0
+    mov rdx, 0
     syscall
-short_exit:
-    mov     rax, 60
-    mov     rdi, 2
+    mov r12, rax      ; fd
+    xor r9, r9        ; len palabra
+read_loop_inv:
+    mov rax, 0
+    mov rdi, r12
+    mov rsi, buffer
+    mov rdx, 256
     syscall
+    cmp rax, 0
+    je eof_flush_inv
+    mov r11, rax
+    xor r10, r10
+next_char_inv:
+    cmp r10, r11
+    je read_loop_inv
+    mov al,[buffer + r10]
+    cmp al,' '
+    je end_word_inv
+    cmp al,10
+    je end_word_inv
+    cmp r9,15
+    ja too_long_inv
+    mov [temp_word + r9], al
+    inc r9
+    inc r10
+    jmp next_char_inv
+end_word_inv:
+    cmp r9,0
+    je skip_sep_inv
+    mov byte [temp_word + r9],0
+    mov rdi, temp_word
+    call find_or_add_word
+skip_sep_inv:
+    xor r9,r9
+    inc r10
+    jmp next_char_inv
+too_long_inv:
+    xor r9,r9
+    inc r10
+    jmp next_char_inv
+eof_flush_inv:
+    cmp r9,0
+    je close_file_inv
+    mov byte [temp_word + r9],0
+    mov rdi, temp_word
+    call find_or_add_word
+close_file_inv:
+    mov rax,3
+    mov rdi,r12
+    syscall
+    ret
 
-; --- imprimir resultados ---
-; Usamos r12 como índice del bucle de impresión (registro callee-saved)
-print_results:
-    xor     r12, r12               ; índice 0..(max_len-1)
-    movzx   rdx, byte [max_len]    ; rdx = max_len (1..64)
-    test    rdx, rdx
-    jz      done_program
+; -----------------------------
+; find_or_add_word
+; -----------------------------
+; rdi = puntero a palabra
+find_or_add_word:
+    mov rax,[num_words]
+    test rax,rax
+    jz .add_new
+    xor rcx,rcx
+.next_word:
+    mov rdx, rcx
+    imul rdx,16
+    lea rsi,[word_table+rdx]
+    xor r8, r8
+.compare_loop:
+    mov al,[rsi + r8]
+    mov bl,[rdi + r8]
+    cmp al,bl
+    jne .next
+    cmp al,0
+    je .found
+    inc r8
+    jmp .compare_loop
+.next:
+    inc rcx
+    mov rax,[num_words]
+    cmp rcx,rax
+    jl .next_word
+.add_new:
+    mov rax,[num_words]
+    imul rax,16
+    lea rsi,[word_table+rax]
+    xor rdx, rdx
+.copy_loop:
+    mov al,[rdi+rdx]
+    mov [rsi+rdx],al
+    cmp al,0
+    je .done_copy
+    inc rdx
+    jmp .copy_loop
+.done_copy:
+    mov eax,[num_words]
+    mov dword [word_count + rax*4],1
+    inc dword [num_words]
+    ret
+.found:
+    mov rax,rcx
+    inc dword [word_count + rax*4]
+    ret
 
-print_loop:
-    cmp     r12, rdx
-    jae     done_program
+; -----------------------------
+; bubble_sort
+; -----------------------------
+bubble_sort:
+    mov rax,[num_words]
+    dec rax
+    mov r8,rax
+.outer:
+    xor rbx,rbx
+.inner:
+    mov rdx,rbx
+    mov rsi,word_table
+    imul rdx,16
+    add rsi,rdx
+    mov rdi,rsi
+    add rdi,16
+    call cmp_words
+    cmp al,1
+    jne .no_swap
+    call swap_words
+.no_swap:
+    inc rbx
+    cmp rbx,r8
+    jl .inner
+    dec r8
+    cmp r8,0
+    jg .outer
+    ret
 
-    mov     al, [len_count + r12]
-    test    al, al
-    jz      next_len
+; -----------------------------
+; cmp_words
+; -----------------------------
+; compara palabras en rsi y rdi
+; devuelve AL=1 si se deben intercambiar
+cmp_words:
+    xor rcx,rcx
+.loop:
+    mov al,[rsi+rcx]
+    mov bl,[rdi+rcx]
+    cmp al,bl
+    ja .swap_needed
+    jb .no_swap_needed
+    cmp al,0
+    je .no_swap_needed
+    inc rcx
+    jmp .loop
+.swap_needed:
+    mov al,1
+    ret
+.no_swap_needed:
+    xor al,al
+    ret
 
-    ; imprimir longitud = (r12 + 1)
-    mov     al, r12b
-    inc     al
-    call    print_number
+; -----------------------------
+; swap_words
+; -----------------------------
+swap_words:
+    push rsi
+    push rdi
+    xor rcx,rcx
+.swap_loop:
+    mov al,[rsi+rcx]
+    mov bl,[rdi+rcx]
+    mov [rsi+rcx],bl
+    mov [rdi+rcx],al
+    cmp al,0
+    je .done_swap
+    inc rcx
+    jmp .swap_loop
+.done_swap:
+    pop rdi
+    pop rsi
+    ; intercambiar contadores
+    mov rax,rsi
+    sub rax,word_table
+    shr rax,4           ; índice palabra1
+    mov rbx,rdi
+    sub rbx,word_table
+    shr rbx,4           ; índice palabra2
+    mov ecx,[word_count + rax*4]
+    mov edx,[word_count + rbx*4]
+    mov [word_count + rax*4],edx
+    mov [word_count + rbx*4],ecx
+    ret
 
+; -----------------------------
+; print_graph
+; -----------------------------
+print_graph:
+    xor rcx,rcx
+    mov rax,[num_words]
+    test rax,rax
+    jz .done_print
+.print_loop:
+    cmp rcx,rax
+    jae .done_print
+    ; imprimir palabra
+    mov rsi, word_table
+    mov rdx, rcx
+    imul rdx,16
+    add rsi,rdx
+    ; longitud palabra
+.len_loop_print:
+    mov al,[rsi]
+    cmp al,0
+    je .print_sep
+    mov rax,1
+    mov rdi,1
+    mov rdx,1
+    mov rsi,rsi
+    syscall
+    inc rsi
+    jmp .len_loop_print
+.print_sep:
     ; imprimir ": "
-    mov     rax, 1                 ; SYS_write
-    mov     rdi, 1                 ; stdout
-    mov     rsi, sep_colon
-    mov     rdx, 2
+    mov rax,1
+    mov rdi,1
+    mov rsi,sep_colon
+    mov rdx,2
     syscall
-
-    ; imprimir cantidad = len_count[r12]
-    mov     al, [len_count + r12]
-    call    print_number
-
-    ; imprimir "\n"
-    mov     rax, 1
-    mov     rdi, 1
-    mov     rsi, nl
-    mov     rdx, 1
+    ; imprimir barras
+    mov rax,[word_count+rcx*4]
+    mov rbx,rax
+    mov al,[config_char]
+.print_bars:
+    cmp rbx,0
+    je .print_number_count
+    mov rax,1
+    mov rdi,1
+    mov rsi,config_char
+    mov rdx,1
     syscall
-
-next_len:
-    inc     r12
-    jmp     print_loop
-
-done_program:
-    mov     rax, 60
-    xor     rdi, rdi
+    dec rbx
+    jmp .print_bars
+.print_number_count:
+    mov eax,[word_count+rcx*4]
+    call print_number
+    ; salto de línea
+    mov rax,1
+    mov rdi,1
+    mov rsi,nl
+    mov rdx,1
     syscall
+    inc rcx
+    jmp .print_loop
+.done_print:
+    ret
 
-; ------------------------------------------------------------
+; -----------------------------
 ; print_number
-; Imprime en decimal el valor de AL (0..255)
-; Clobbers: RAX, RBX, RDX, RSI
-; NO modifica R12 (por eso usamos r12 en el bucle)
-; ------------------------------------------------------------
+; -----------------------------
 print_number:
-    movzx   rax, al                ; valor a convertir (0..255)
-    mov     rcx, 10
-    sub     rsp, 16                ; reservar pequeño buffer (mantener alineación)
-    lea     rsi, [rsp+16]          ; rsi = fin del buffer
+    xor rdx, rdx
+    mov rcx, 10
+    mov rcx,10
+    sub rsp,16
+    lea rsi,[rsp+16]
 .convert:
-    xor     rdx, rdx
-    div     rcx                    ; rax = rax/10, rdx = rax%10
-    add     dl, '0'
-    dec     rsi
-    mov     [rsi], dl
-    test    rax, rax
-    jnz     .convert
-
-    ; write(1, rsi, (rsp+16 - rsi))
-    mov     rax, 1
-    mov     rdi, 1
-    mov     rdx, rsp
-    add     rdx, 16
-    sub     rdx, rsi
+    xor rdx,rdx
+    div rcx
+    add dl,'0'
+    dec rsi
+    mov [rsi],dl
+    test rax,rax
+    jnz .convert
+    mov rax,1
+    mov rdi,1
+    lea rdx,[rsp+16]
+    sub rdx,rsi
+    mov rsi,rsi
     syscall
-
-    add     rsp, 16
+    add rsp,16
     ret

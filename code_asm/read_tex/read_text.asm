@@ -4,7 +4,7 @@
 
 %include "linux64.inc"
 section .data
-    filename db "my_list.txt",0
+    filename db "config.txt",0
 section .bss    
     text resb 124
     l_text equ 124

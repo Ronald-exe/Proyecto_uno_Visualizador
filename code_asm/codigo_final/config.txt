@@ -1,0 +1,3 @@
+caracter_barra:*
+color_barra:94
+color_fondo:40
