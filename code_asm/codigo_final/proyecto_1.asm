@@ -48,6 +48,7 @@ section .bss
 
 section .text
     global _start                                                                    ;Comienzo del codigo
+    global _segunda
 
 
 _start:
@@ -151,6 +152,7 @@ salida:
     syscall 
     
 ;////////////////////////////////////// Recoleccion de datos de la configuracion///////////////////////
+_segunda:
 datos_cofig:
     mov rsi, buffer_confg
     mov rdi, datos_config
@@ -185,7 +187,7 @@ acceso_dato:
     inc rsi                                                     ;incrementamos el valor rsi para seguir leyendo
     inc r9                                                      ;Incrementamos el numero de caracteres
     jmp acceso_dato                                             ;En caso de que no se encuentre el valor final se repite el bucle
-    
+
 main_convertidor_ascii:
     sub rsi, r9                                                 ; Retroceder al inicio del número
     mov al, [rsi]                                               ; Verificar si el valor es un caracter
