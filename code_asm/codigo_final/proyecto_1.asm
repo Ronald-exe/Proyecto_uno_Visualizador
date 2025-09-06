@@ -19,7 +19,7 @@ section .bss
     buffer_confg      resb 512                                                      ;Buffer para lectura total del archivo de "config.ini"
     fd                resq 1                                                        ;Descriptor de archivo para "config.ini"
 
-    datos_config      resb 64                                                       ;Buffer para guardar los datos de interes de "config.ini"
+    datos_config      resb 100*100                                                       ;Buffer para guardar los datos de interes de "config.ini"
     l_datos_config    resb 64                                                       ;longitud de los datos de interes "config.ini"
 
     buffer_lista      resb 1024                                                     ;Buffer para lectura total del archivo "inventario.txt"
@@ -49,6 +49,7 @@ section .bss
 section .text
     global _start                                                                    ;Comienzo del codigo
     global _segunda
+    global _tercera
 
 
 _start:
@@ -70,37 +71,37 @@ _start:
     syscall
     cmp rax, 0                                                                        ;Por si hay un fallo que el archivo no se pudo abrir 
     jl Fin_programa 
-    call datos_cofig             ; Procesar datos de configuración
+    call datos_C                                                                      ; Procesar datos de configuración
     
 
 ; Abrir archivo de inventario
-    mov rax, 2                                                                        ;Sys_open
-    mov rdi, listatxt                                                                 ;Archivo a abrir
-    mov rsi, 0                                                                        ;O_RDONLY
-    syscall 
+    ;mov rax, 2                                                                        ;Sys_open
+    ;mov rdi, listatxt                                                                 ;Archivo a abrir
+    ;mov rsi, 0                                                                        ;O_RDONLY
+    ;syscall 
 
-    cmp rax, 0                                                                       ;Por si hay un fallo que el archivo no se pudo abrir 
-    jl Fin_programa_dos                                                              ;Finaliza el programa
-    mov [fd1], rax                                                                   ;El descriptor de archivo guarda etiqueta para abrir "config.ini"
+    ;cmp rax, 0                                                                       ;Por si hay un fallo que el archivo no se pudo abrir 
+    ;jl Fin_programa_dos                                                              ;Finaliza el programa
+    ;mov [fd1], rax                                                                   ;El descriptor de archivo guarda etiqueta para abrir "config.ini"
 
 ; Leer archivo de inventario
-    mov rdi, [fd1]                                                                    ;rdi apunta en direccion en donde esta el archivo de configuracion
-    mov rax, 0                                                                        ;SYS_read
-    mov rsi, buffer_lista                                                             ;Buffer en donde se encuentra toda la configuracion
-    mov rdx, 1024                                                                     ;Longitud del buffer
-    syscall
+    ;mov rdi, [fd1]                                                                    ;rdi apunta en direccion en donde esta el archivo de configuracion
+    ;mov rax, 0                                                                        ;SYS_read
+    ;mov rsi, buffer_lista                                                             ;Buffer en donde se encuentra toda la configuracion
+    ;mov rdx, 1024                                                                     ;Longitud del buffer
+    ;syscall
 
     jmp funcional                                                                     ;Se lee con exito ambos archivos
-
+    ;Jmp salida   ; borrar esto es solo para probar algo unos momentos, no es util para nada.
 ; Cerrar archivos
 
-    mov rdi, [fd]           ; Descriptor de configuración
-    mov rax, 3              ; syscall: close()
-    syscall 
+   ;mov rdi, [fd]           ; Descriptor de configuración
+   ;mov rax, 3              ; syscall: close()
+   ;syscall 
 
-    mov rdi, [fd1]          ; Descriptor de notas
-    mov rax, 3              ; syscall: close()
-    syscall 
+   ;mov rdi, [fd1]          ; Descriptor de notas
+   ;mov rax, 3              ; syscall: close()
+   ;syscall 
 
 ;///////////////////////////////////////// Manejo de errores ///////////////////////////////////////
 
@@ -112,127 +113,123 @@ Fin_programa:
     syscall 
     jmp salida
 
-Fin_programa_dos:
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, error_inventario
-    mov rdx, l_error_inventario
-    syscall 
-    jmp salida
+;Fin_programa_dos:
+   ;mov rax, 1
+   ;mov rdi, 1
+   ;mov rsi, error_inventario
+   ;mov rdx, l_error_inventario
+   ;syscall 
+   ;jmp salida
 
 ;/////////////////////////////////// imprimir valores en pantall ////////////////////////////////////
 funcional:
 ; imprimir los datos de configuracion
-    mov rax, 1                 
-    mov rdi, 1
-    mov rsi, buffer_confg
-    mov rdx, 512
-    syscall
+    ;mov rax, 1                 
+    ;mov rdi, 1
+    ;mov rsi, buffer_confg
+    ;mov rdx, 512
+    ;syscall
 
 ; imprimir los datos de inventario
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, buffer_lista
-    mov rdx, 1024
-    syscall
-    jmp salida
+    ;mov rax, 1
+    ;mov rdi, 1
+    ;mov rsi, buffer_lista
+    ;mov rdx, 1024
+    ;syscall
+    ;jmp salida
 
 ; imprimir los datos de ascii
     mov rax, 1
     mov rdi, 1
-    mov rsi, buf_num_ascii
+    mov rsi, datos_config 
     mov rdx, 1024
     syscall
     jmp salida
 
 ;////////////////////////////////////////   salida del sistema  ///////////////////////////////////////
 salida:
+_tercera:
+    syscall
+
     mov rax, 60             ; syscall: exit()
     xor rdi, rdi            ; Código de salida: 0
     syscall 
-    
+
 ;////////////////////////////////////// Recoleccion de datos de la configuracion///////////////////////
 _segunda:
-datos_cofig:
-    mov rsi, buffer_confg
-    mov rdi, datos_config
-    mov r8b, 4                                                   ;Bandera de cuantos valores de interes hay en configuracion
-
+    syscall
+datos_C:
+    mov rsi, buffer_confg       ; Apuntar al inicio del buffer de configuración
+    mov rdi, datos_config       ; Apuntar al buffer donde guardaremos los datos                      
 buscar_dato:
-    xor r9, r9                                                   ;contador de caracteres
-    mov al, [rsi]                                                ;se encarga de lectura archivo de 1 byte cada caracter es de un byte
-    cmp al, 0                                                    ;Ya no hay mas bit para leer
-    je done_ascii                                        ;finaliza lectura
-    cmp al,':'                                                   ;Determina el comienzo de un caracter de interes.                                               
-    je leer_valor                                                ;Cuando se determina el comienzo del caracter de interes se guarda el dato
-    inc rsi                                                      ;En caso de no encontrar sigue aumentando el puntureo hasta llegar al bit de interes
-    jmp buscar_dato                                              ;Repite todo el ciclo
+    mov al, [rsi]               ; Leer el siguiente byte del buffer
+    cmp al, 0                   ; Si llegamos al fin del buffer (NULL), terminar
+    je done_ascii
+    cmp al, ':'                 ; Buscar el caracter ':' que indica inicio de valor
+    jne siguiente_caracter
+    inc rsi                     ; Saltar ':' y pasar al primer caracter del valor
+    jmp leer_valor              ; Ir a leer el valor
+
+siguiente_caracter:
+    inc rsi                     ; Si no es ':', pasar al siguiente byte
+    jmp buscar_dato             ; Repetir búsqueda
 
 leer_valor:
-    dec r8b                                                     ;decrece en un el valor del dato que se quiere encontrar
-    jz done_ascii                                       ;Bandera que finaliza la busqueda cundon r8b haya llegado a 0, sin datos de interes
-    inc rsi                                                     ;Incrementa el rsi par continuar con la lectura, saltando el simbolo :
-    jmp acceso_dato                                             ;El sistema salta a acceder el dato de interes en configuraciones        
-
-acceso_dato:
-    mov al, [rsi]                                               ;al es un puntero de 1 byte que nos permite leer caracter por caracter en el achivo config el cual esta siendo apuntado por rsi
-    
-    cmp al, ' '
-    je main_convertidor_ascii
-    cmp al, 0Ah
-    je main_convertidor_ascii
-    cmp al, 0
-    je main_convertidor_ascii
-    
-    inc rsi                                                     ;incrementamos el valor rsi para seguir leyendo
-    inc r9                                                      ;Incrementamos el numero de caracteres
-    jmp acceso_dato                                             ;En caso de que no se encuentre el valor final se repite el bucle
-
-main_convertidor_ascii:
-    sub rsi, r9                                                 ; Retroceder al inicio del número
-    mov al, [rsi]                                               ; Verificar si el valor es un caracter
+    mov al, [rsi]               ; Leer el siguiente byte (primer caracter del valor)
+    cmp al, 0Ah                 ; Si es salto de linea, terminar dato
+    je guardar_valor
+    cmp al, 0                   ; Si es NULL, terminar dato
+    je guardar_valor
     cmp al, '0'
-    jb guardar_caracter                                         ; si < '0', es caracter
+    jb guardar_valor_char       ; Si < '0', es carácter
     cmp al, '9'
-    ja guardar_caracter                                         ; si > '9', es caracter
-    call ascii_decimal
-    mov [rdi], rax                                              ; Guardar número completo en qword
-    mov [buf_num_ascii], rax
-    inc rdi                                                     ; Avanzar al siguiente espacio de datos
-    add rsi, r9                                                 ; Avanzar puntero después del número
-    jmp buscar_dato                                             ;Simpre salta al loop principal
+    ja guardar_valor_char       ; Si > '9', es carácter
+    cmp al, '*'
+    ja guardar_valor_char 
+    call ascii_decimal          ; Si es número, convertir ASCII -> decimal
+    mov [rdi], al               ; Guardar 1 byte del número en datos_config
+    inc rdi                     ; Avanzar al siguiente byte del buffer de salida
+    add rsi, r9                 ; Saltar al siguiente dato en el buffer de entrada
+    jmp buscar_dato             ; Volver a buscar próximo dato
 
-guardar_caracter:
-    mov al, [rsi]               ; guardar el carácter
-    movzx rax, al
+guardar_valor_char:
+    mov [rdi], al               ; Guardar el carácter en datos_config
+    inc rdi                     ; Avanzar al siguiente byte del buffer de salida
+    inc rsi                     ; Avanzar al siguiente byte del buffer de entrada
+    inc r9
+    jmp buscar_dato             ; Volver a buscar próximo dato
 
-guardar_dato:
-    mov [rdi], rax              ; guardar en buffer de datos
-    mov [buf_num_ascii], rax    ; opcional: guardar también en buffer temporal
-    inc rsi
-    add rsi, r9                 ; avanzar al siguiente dato
-    inc rdi                      ; apuntar a la siguiente posición de salida
-    jmp buscar_dato
+guardar_valor:
+    inc rsi                     ; Avanzar al siguiente byte del buffer
+    jmp buscar_dato             ; Continuar búsqueda
+
+; ========================================
+; Función: ascii_decimal
+; Descripción: Convierte un número ASCII a decimal
+;              y lo deja en AL (1 byte)
+; ========================================
 
 ascii_decimal:
-    xor rax,rax                                                 ;Inicializar rax en 0
+    xor rax, rax                ; Limpiar RAX para acumular el número
+    ;xor r9, r9                  ; Contador de caracteres leídos
 convertir:
-    mov bl, [rsi]                                               ;Utilizamos un registro de un byte para almacenar el archivo
-    cmp bl, ' '                                                 ;Si el valor final es un espacio
-    je done_ascii                                               ;Termina la ejecucion
-    cmp bl, 0
-    je done_ascii
-    cmp bl, 0Ah                                                 ;considerar salto de línea
-    je done_ascii
-
-    sub bl, '0'                                                 ;Convertir de ASCII a decimal
-    movzx rbx, bl                                               ;se tranforma la informacion en bl a 64 bits
-    imul rax, 10                                                ;multiplicador del resultado actual por diez
-    add rax, rbx                                                ;Sumar el nuevo dígito
-
-    inc rsi
-    inc r9
-    jmp convertir    
+    mov bl, [rsi]               ; Leer un byte del buffer
+    cmp bl, ' '                 ; Si es espacio, fin de número
+    je fin_convert
+    cmp bl, 0Ah                 ; Si es salto de línea, fin de número
+    je fin_convert
+    cmp bl, 0                   ; Si es NULL, fin de número
+    je fin_convert
+    sub bl, '0'                 ; Convertir ASCII -> decimal
+    movzx rbx, bl               ; Pasar a 64 bits
+    imul rax, 10                ; Multiplicar acumulador por 10
+    add rax, rbx                ; Sumar el nuevo dígito
+    inc rsi                     ; Avanzar al siguiente byte del buffer
+    ;inc r9                      ; Incrementar contador de caracteres
+    jmp convertir               ; Repetir hasta fin de número
+fin_convert:
+    mov al, al                  ; Guardar solo el byte menos significativo en AL
+    ret
 
 done_ascii:
     ret
