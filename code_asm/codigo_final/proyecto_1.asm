@@ -75,33 +75,31 @@ _start:
     
 
 ; Abrir archivo de inventario
-    ;mov rax, 2                                                                        ;Sys_open
-    ;mov rdi, listatxt                                                                 ;Archivo a abrir
-    ;mov rsi, 0                                                                        ;O_RDONLY
-    ;syscall 
+    mov rax, 2                                                                        ;Sys_open
+    mov rdi, listatxt                                                                 ;Archivo a abrir
+    mov rsi, 0                                                                        ;O_RDONLY
+    syscall 
 
-    ;cmp rax, 0                                                                       ;Por si hay un fallo que el archivo no se pudo abrir 
-    ;jl Fin_programa_dos                                                              ;Finaliza el programa
-    ;mov [fd1], rax                                                                   ;El descriptor de archivo guarda etiqueta para abrir "config.ini"
-
+    cmp rax, 0                                                                       ;Por si hay un fallo que el archivo no se pudo abrir 
+    jl Fin_programa_dos                                                              ;Finaliza el programa
+    mov [fd1], rax                                                                   ;El descriptor de archivo guarda etiqueta para abrir "config.ini"
 ; Leer archivo de inventario
-    ;mov rdi, [fd1]                                                                    ;rdi apunta en direccion en donde esta el archivo de configuracion
-    ;mov rax, 0                                                                        ;SYS_read
-    ;mov rsi, buffer_lista                                                             ;Buffer en donde se encuentra toda la configuracion
-    ;mov rdx, 1024                                                                     ;Longitud del buffer
-    ;syscall
+    mov rdi, [fd1]                                                                    ;rdi apunta en direccion en donde esta el archivo de configuracion
+    mov rax, 0                                                                        ;SYS_read
+    mov rsi, buffer_lista                                                             ;Buffer en donde se encuentra toda la configuracion
+    mov rdx, 1024                                                                     ;Longitud del buffer
+    syscall
 
     jmp funcional                                                                     ;Se lee con exito ambos archivos
-    ;Jmp salida   ; borrar esto es solo para probar algo unos momentos, no es util para nada.
 ; Cerrar archivos
 
-   ;mov rdi, [fd]           ; Descriptor de configuración
-   ;mov rax, 3              ; syscall: close()
-   ;syscall 
+    mov rdi, [fd]           ; Descriptor de configuración
+    mov rax, 3              ; syscall: close()
+    syscall 
 
-   ;mov rdi, [fd1]          ; Descriptor de notas
-   ;mov rax, 3              ; syscall: close()
-   ;syscall 
+    mov rdi, [fd1]          ; Descriptor de notas
+    mov rax, 3              ; syscall: close()
+   syscall 
 
 ;///////////////////////////////////////// Manejo de errores ///////////////////////////////////////
 
@@ -113,30 +111,29 @@ Fin_programa:
     syscall 
     jmp salida
 
-;Fin_programa_dos:
-   ;mov rax, 1
-   ;mov rdi, 1
-   ;mov rsi, error_inventario
-   ;mov rdx, l_error_inventario
-   ;syscall 
-   ;jmp salida
+Fin_programa_dos:
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, error_inventario
+    mov rdx, l_error_inventario
+    syscall 
+    jmp salida
 
 ;/////////////////////////////////// imprimir valores en pantall ////////////////////////////////////
 funcional:
 ; imprimir los datos de configuracion
-    ;mov rax, 1                 
-    ;mov rdi, 1
-    ;mov rsi, buffer_confg
-    ;mov rdx, 512
-    ;syscall
+    mov rax, 1                 
+    mov rdi, 1
+    mov rsi, buffer_confg
+    mov rdx, 512
+    syscall
 
 ; imprimir los datos de inventario
-    ;mov rax, 1
-    ;mov rdi, 1
-    ;mov rsi, buffer_lista
-    ;mov rdx, 1024
-    ;syscall
-    ;jmp salida
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, buffer_lista
+    mov rdx, 1024
+    syscall
 
 ; imprimir los datos de ascii
     mov rax, 1
@@ -160,7 +157,8 @@ _segunda:
     syscall
 datos_C:
     mov rsi, buffer_confg       ; Apuntar al inicio del buffer de configuración
-    mov rdi, datos_config       ; Apuntar al buffer donde guardaremos los datos                      
+    mov rdi, datos_config       ; Apuntar al buffer donde guardaremos los datos
+    mov r12, ascii_decimal                      
 buscar_dato:
     mov al, [rsi]               ; Leer el siguiente byte del buffer
     cmp al, 0                   ; Si llegamos al fin del buffer (NULL), terminar
@@ -185,7 +183,7 @@ leer_valor:
     cmp al, '9'
     ja guardar_valor_char       ; Si > '9', es carácter
     cmp al, '*'
-    ja guardar_valor_char 
+    je guardar_valor_char 
     call ascii_decimal          ; Si es número, convertir ASCII -> decimal
     mov [rdi], al               ; Guardar 1 byte del número en datos_config
     inc rdi                     ; Avanzar al siguiente byte del buffer de salida
@@ -233,3 +231,4 @@ fin_convert:
 
 done_ascii:
     ret
+
