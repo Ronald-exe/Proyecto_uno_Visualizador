@@ -6,7 +6,7 @@
 section .data
 ;------------------------------Archivos de lectura----------------------------
     listatxt  db "inventario.txt", 0
-    configtxt    db "config.txt", 0
+    configtxt    db "config.ini", 0
 
 ;------------------------------Errores al abrir el archivo----------------------
     error_config db 'No se encontro el archivo de configuracion',0xa                ;Impresion error de configuracion en pantalla
@@ -14,6 +14,16 @@ section .data
 
     error_inventario db 'No se encontro el archivo de inventario',0xa            ;Impresion error de configuracion en pantalla
     l_error_inventario equ $-error_inventario
+;-----------------Valores para el histograma--------------------------------------
+    dos_puntos_msg      db ":", 0
+    espacio_msg         db " ", 0
+    nueva_linea_msg     db 10, 0
+    
+    ansi_esc            db 0x1B      ; Carácter ESC
+    ansi_open           db "[", 0
+    ansi_m              db "m", 0
+    ansi_reset_completo db 0x1B, "[0m", 0
+    ansi_reset_len      equ $ - ansi_reset_completo
 
 section .bss
 ; /////////////////////////////////////// buffer para lectura general ////////////////////////////////////////////////////////////////////
@@ -33,19 +43,16 @@ section .bss
     Buf_Nombrefruta   resb 512                                                      ;Buffer para denotar los nombres de las frutas
     Buf_frutas_O      resb 512                                           
     Buf_numfrutas     resb 512                                                      ;Buffer para denotar los nombres de las frutas   
-    Buf_cantidadfruta resb 512                                                      ;Buffer para denotar el numero de frutas que hay
+    Buf_cantidadfruta resq 100                                                      ;Buffer para denotar el numero de frutas que hay
 ;/////////////////////////////////// guardar dato en Ascii ///////////////////////////////////////////////////////////////////////////////
     buf_num_ascii     resb 64
 ;/////////////////////////////////// estructura del histograma ///////////////////////////////////////////////////////////////////////////
-
-    GNHistograma      resb 100*100                                                   ;Generar el histograma
-
-    VecX              resb 1024                                                      ;Posicion de referencia a donde va el histograma
-
-    Cantidad_fila     resb 8                                                         ;Cantidad de elementos en el histograma
-
-    restHistograma    resb 32                                                        ;Reset del histograma
-
+    caracter_barra     resb 1
+    color_barra        resb 1
+    color_fondo        resb 1
+    char_buffer        resb 1
+    num_buffer         resb 20
+    byte_buffer        resb 4
 ;////////////////////////////////////////////////////// Codificacion  ///////////////////////////////////////////////////////////////////
 
 section .text
@@ -91,9 +98,11 @@ _start:
     mov rsi, buffer_lista                                                             ;Buffer en donde se encuentra toda la configuracion
     mov rdx, 1024                                                                     ;Longitud del buffer
     syscall
-    call Cantidad_fruta
     call GuardarNombresFrutas
+    call Cantidad_fruta
     call OrdenarxNombre
+    ;call GenerarHistograma    
+
     jmp funcional                                                                     ;Se lee con exito ambos archivos
 
 
@@ -135,35 +144,30 @@ funcional:
     mov rsi, buffer_confg
     mov rdx, 512
     syscall
-
 ; imprimir los datos de inventario
     mov rax, 1
     mov rdi, 1
     mov rsi, buffer_lista
     mov rdx, 1024
     syscall
-
 ; imprimir los datos de ascii
     mov rax, 1
     mov rdi, 1
     mov rsi, datos_config 
     mov rdx, 1024
     syscall
-
-; imprimir de la cantidad de frutas
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, Buf_cantidadfruta 
-    mov rdx, 1024
-    syscall
-
 ; imprimir de la Nombre de frutas
     mov rax, 1
     mov rdi, 1
     mov rsi, Buf_Nombrefruta 
     mov rdx, 1024
     syscall
-
+; imprimir de la cantidad de frutas
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, Buf_cantidadfruta 
+    mov rdx, 1024
+    syscall
 
 
     jmp salida
@@ -268,72 +272,6 @@ done_ascii:
 ;              
 ; ========================================
 
-;/////////////////////////////////////////////////// valores para la lectura del inventario //////////////////////////////////////////
-
-; ========================================
-; Función: Cantidad_fruta
-; Descripción: Extrae las cantidades numéricas del inventario
-; ========================================
-Cantidad_fruta:
-    mov rsi, buffer_lista                   ; Apuntar al inicio del buffer de configuración
-    mov rdi, Buf_cantidadfruta              ; Apuntar al buffer donde guardaremos los datos                 
-buscar_dato_cantidad:   
-    mov al, [rsi]                           ; Leer el siguiente byte del buffer
-    cmp al, 0                               ; Si llegamos al fin del buffer (NULL), terminar
-    je done_ascii_cantidad  
-    cmp al, ':'                             ; Buscar el caracter ':' que indica inicio de valor
-    jne siguiente_caracter_cantidad 
-    inc rsi                                 ; Saltar ':' y pasar al primer caracter del valor
-    jmp leer_valor_cantidad                 ; Ir a leer el valor
-
-siguiente_caracter_cantidad:
-    inc rsi                                 ; Si no es ':', pasar al siguiente byte
-    jmp buscar_dato_cantidad                ; Repetir búsqueda
-
-leer_valor_cantidad:
-    mov al, [rsi]                           ; Leer el siguiente byte (primer caracter del valor)
-    cmp al, 0Ah                             ; Si es salto de linea, terminar dato
-    je guardar_valor_cantidad
-    cmp al, 0                               ; Si es NULL, terminar dato
-    je guardar_valor_cantidad               ; CORRECCIÓN: añadir esta línea
-    call ascii_decimal_cantidad             ; Si es número, convertir ASCII -> decimal
-    mov [rdi], al                           ; Guardar 1 byte del número en datos_config
-    inc rdi                                 ; Avanzar al siguiente byte del buffer de salida
-    ; add rsi, r9                           ; COMENTAR: esto no es necesario
-    inc rsi                                 ; CORRECCIÓN: avanzar solo 1 byte
-    jmp buscar_dato_cantidad                ; Volver a buscar próximo dato
-
-guardar_valor_cantidad:
-    inc rsi                                 ; Avanzar al siguiente byte del buffer
-    jmp buscar_dato_cantidad                ; Continuar búsqueda
-
-; ========================================
-; Función: ascii_decimal_cantidad
-; Descripción: Convierte un número ASCII a decimal
-;              y lo deja en AL (1 byte)
-; ========================================
-ascii_decimal_cantidad:
-    xor rax, rax                            ; Limpiar RAX para acumular el número
-convertir_cantidad:
-    mov bl, [rsi]                           ; Leer un byte del buffer
-    cmp bl, ' '                             ; Si es espacio, fin de número
-    je fin_convert_cantidad
-    cmp bl, 0Ah                             ; Si es salto de línea, fin de número
-    je fin_convert_cantidad
-    cmp bl, 0                               ; Si es NULL, fin de número
-    je fin_convert_cantidad
-    sub bl, '0'                             ; Convertir ASCII -> decimal
-    movzx rbx, bl                           ; Pasar a 64 bits
-    imul rax, 10                            ; Multiplicar acumulador por 10
-    add rax, rbx                            ; Sumar el nuevo dígito
-    inc rsi                                 ; Avanzar al siguiente byte del buffer
-    jmp convertir_cantidad                  ; Repetir hasta fin de número
-fin_convert_cantidad:
-    mov al, al                              ; Guardar solo el byte menos significativo en AL
-    ret
-
-done_ascii_cantidad:
-    ret
 
 ;/////////////////////////////////////////////////// Nombres de las frutas del inventario /////////////////////////////////////////////
 
@@ -360,7 +298,7 @@ GuardarNombreFruta:
 
     cmp al, 10                   ; Comprobar si es salto de línea (fin de línea)
     je FinNombre                 ; Si es salto de línea, cerrar nombre y pasar a siguiente fruta
-
+    ;call ascii_decimal_cantidad 
     mov byte [rdi], al           ; Guardar el carácter en el buffer de nombres
     inc rsi                      ; Avanzar al siguiente carácter en la entrada
     inc rdi                      ; Avanzar al siguiente espacio en el buffer de salida
@@ -399,12 +337,89 @@ GFListo:
     mov [Buf_numfrutas], r11     ; Guardar el total de frutas leídas en memoria
     ret  
 
+;/////////////////////////////////////////////////// valores para la lectura del inventario //////////////////////////////////////////
+
+; ========================================
+; Función: Cantidad_fruta
+; Descripción: Extrae las cantidades numéricas del inventario
+; ========================================
+Cantidad_fruta:
+    mov rsi, buffer_lista                   ; Apuntar al inicio del buffer
+    mov rdi, Buf_cantidadfruta              ; Buffer para cantidades NUMÉRICAS
+    xor rcx, rcx                            ; Contador de frutas
+    
+buscar_dato_cantidad:   
+    mov al, [rsi]
+    cmp al, 0                               ; Fin del buffer
+    je done_ascii_cantidad  
+    cmp al, ':'                             ; Buscar ':'
+    jne siguiente_caracter_cantidad 
+    
+    inc rsi                                 ; Saltar ':' 
+    ; ¡IMPORTANTE! Ahora procesar el número
+    
+leer_valor_cantidad:
+    call ascii_decimal_cantidad             ; Convertir ASCII a número
+    mov [rdi], rax                          ; Guardar el VALOR NUMÉRICO (8 bytes)
+    add rdi, 8                              ; Avanzar 8 bytes (tamaño de qword)
+    inc rcx                                 ; Incrementar contador de frutas
+    
+    ; Buscar siguiente línea
+buscar_siguiente_linea:
+    mov al, [rsi]
+    cmp al, 0
+    je done_ascii_cantidad
+    cmp al, 10                              ; Salto de línea
+    je encontro_salto
+    inc rsi
+    jmp buscar_siguiente_linea
+
+encontro_salto:
+    inc rsi                                 ; Saltar el salto de línea
+    jmp buscar_dato_cantidad
+
+siguiente_caracter_cantidad:
+    inc rsi
+    jmp buscar_dato_cantidad
+
+done_ascii_cantidad:
+    mov [Buf_numfrutas], rcx                ; Guardar número de frutas
+    ret
+
+; ========================================
+; Función: ascii_decimal_cantidad
+; ========================================
+ascii_decimal_cantidad:
+    xor rax, rax                            ; Limpiar RAX
+    xor rbx, rbx
+    
+convertir_cantidad:
+    mov bl, [rsi]
+    cmp bl, '0'                             ; ¿Es dígito?
+    jb fin_convert_cantidad
+    cmp bl, '9'
+    ja fin_convert_cantidad
+    cmp bl, 10                              ; Salto de línea
+    je fin_convert_cantidad
+    cmp bl, 0                               ; Fin de buffer
+    je fin_convert_cantidad
+    
+    sub bl, '0'                             ; Convertir ASCII a número
+    imul rax, 10                            ; rax = rax * 10
+    add rax, rbx                            ; rax = rax + dígito
+    inc rsi
+    jmp convertir_cantidad
+
+fin_convert_cantidad:
+    ret
+
 ;/////////////////////////////////////////////////// Ordenar lista alfabeticamente  //////////////////////////////////////////////////
 
 ; ========================================
 ; Función: OrdenarxNombre
-; Descripción: Ordena la lista de frutas alfabéticamente usando bubble sort
+; Descripción: Ordena la lista de frutas alfabéticamente usando Bubble Sort
 ; ========================================
+
 OrdenarxNombre:
     push r12
     push r13
@@ -421,68 +436,68 @@ OrdenarxNombre:
     jle finish_sort               ; si 0 o 1 elementos
     
     dec r14                       ; n-1
-    mov r15, 0                    ; i = 0
+    mov r15, r14                  ; i = n-1 (para bubble sort)
 
 outer_loop:
-    mov rbx, r15                  ; min_index = i
-    mov rcx, r15                  ; j = i + 1
-    inc rcx
+    xor r11, r11                  ; Bandera para detectar intercambios
+    xor r10, r10                  ; j = 0
 
 inner_loop:
-    cmp rcx, [Buf_numfrutas]      ; j < n?
-    jge check_swap
+    cmp r10, r15                  ; j < i?
+    jge check_swap_done
     
-    ; Comparar nombre[j] con nombre[min_index]
-    mov rax, rcx
+    ; Comparar nombre[j] con nombre[j+1]
+    mov rax, r10
     imul rax, 16
     lea rsi, [r12 + rax]          ; nombre[j]
     
-    mov rax, rbx
-    imul rax, 16
-    lea rdi, [r12 + rax]          ; nombre[min_index]
+    mov rbx, r10
+    inc rbx
+    imul rbx, 16
+    lea rdi, [r12 + rbx]          ; nombre[j+1]
     
     call comparar_strings
     cmp rax, 0
-    jge next_j                    ; si nombre[j] >= nombre[min_index], seguir
+    jle next_j                    ; si nombre[j] <= nombre[j+1], seguir
     
-    mov rbx, rcx                  ; min_index = j
-
-next_j:
-    inc rcx
-    jmp inner_loop
-
-check_swap:
-    ; Si min_index != i, intercambiar
-    cmp rbx, r15
-    je next_i
-    
-    ; INTERCAMBIAR elemento[i] con elemento[min_index]
+    ; INTERCAMBIAR elemento[j] con elemento[j+1]
     ; Intercambiar nombres
-    mov rax, r15
+    mov rax, r10
     imul rax, 16
-    lea rsi, [r12 + rax]          ; nombre[i]
+    lea rsi, [r12 + rax]          ; nombre[j]
     
-    mov rax, rbx
-    imul rax, 16
-    lea rdi, [r12 + rax]          ; nombre[min_index]
+    mov rbx, r10
+    inc rbx
+    imul rbx, 16
+    lea rdi, [r12 + rbx]          ; nombre[j+1]
     
     call intercambiar_nombres
     
     ; Intercambiar cantidades
-    mov rax, r15
+    mov rax, r10
     imul rax, 8
-    lea rsi, [r13 + rax]          ; cantidad[i]
+    lea rsi, [r13 + rax]          ; cantidad[j]
     
-    mov rax, rbx
-    imul rax, 8
-    lea rdi, [r13 + rax]          ; cantidad[min_index]
+    mov rbx, r10
+    inc rbx
+    imul rbx, 8
+    lea rdi, [r13 + rbx]          ; cantidad[j+1]
     
     call intercambiar_cantidades
+    
+    mov r11, 1                    ; Indicar que hubo intercambio
 
-next_i:
-    inc r15
-    cmp r15, r14                  ; i < n-1?
-    jl outer_loop
+next_j:
+    inc r10
+    jmp inner_loop
+
+check_swap_done:
+    ; Verificar si hubo intercambios en esta pasada
+    cmp r11, 0
+    je finish_sort                ; Si no hubo intercambios, está ordenado
+    
+    dec r15                       ; i--
+    jnz outer_loop                ; Continuar mientras i > 0
 
 finish_sort:
     pop rdi
@@ -494,37 +509,38 @@ finish_sort:
     pop r12
     ret
 
-; --- Subrutina: Comparar dos strings ---
+; ========================================
+; ========================================
 comparar_strings:
     push rcx
-    push rbx
     xor rcx, rcx
     
 compare_loop:
     mov al, [rsi + rcx]          ; carácter del primer string
     mov bl, [rdi + rcx]          ; carácter del segundo string
     
-    ; Si ambos caracteres son iguales, continuar
-    cmp al, bl
-    jne different
-    
     ; Si llegamos al final de ambos strings, son iguales
     cmp al, 0
-    je equal
+    je check_second_end
+    cmp bl, 0
+    je check_first_end
     
-    inc rcx
-    cmp rcx, 15                  ; máximo 15 caracteres
-    jl compare_loop
-    
-    ; Si llegamos aquí, los primeros 15 caracteres son iguales
-    jmp equal
-    
-different:
-    ; Comparación alfabética: a < b si al < bl
+    ; Comparación alfabética
     cmp al, bl
     jl less_than
     jg greater_than
     
+    inc rcx
+    jmp compare_loop
+
+check_second_end:
+    cmp bl, 0
+    je equal
+    jmp less_than
+
+check_first_end:
+    jmp greater_than
+
 less_than:
     mov rax, -1                  ; primer string es menor
     jmp done_compare
@@ -537,30 +553,51 @@ equal:
     xor rax, rax                 ; strings iguales
     
 done_compare:
-    pop rbx
     pop rcx
     ret
 
-; --- Subrutina: Intercambiar nombres (16 bytes) ---
+; ========================================
+; ========================================
 intercambiar_nombres:
     push rcx
-    xor rcx, rcx
+    push rax
+    push rbx
     
+    mov rcx, 16                  ; 16 bytes por nombre
 swap_names:
-    mov al, [rsi + rcx]
-    mov bl, [rdi + rcx]
-    mov [rsi + rcx], bl
-    mov [rdi + rcx], al
-    inc rcx
-    cmp rcx, 16
-    jl swap_names
+    mov al, [rsi]               ; Cargar byte del primer nombre
+    mov bl, [rdi]               ; Cargar byte del segundo nombre
+    mov [rsi], bl               ; Intercambiar
+    mov [rdi], al               ; Intercambiar
+    inc rsi
+    inc rdi
+    dec rcx
+    jnz swap_names
+    
+    pop rbx
+    pop rax
     pop rcx
     ret
 
-; --- Subrutina: Intercambiar cantidades (8 bytes) ---
+; ========================================
+; ========================================
 intercambiar_cantidades:
-    mov rax, [rsi]
-    mov rbx, [rdi]
-    mov [rsi], rbx
-    mov [rdi], rax
+    push rax
+    push rbx
+    
+    mov rax, [rsi]              ; Cargar cantidad del primer elemento
+    mov rbx, [rdi]              ; Cargar cantidad del segundo elemento
+    mov [rsi], rbx              ; Intercambiar
+    mov [rdi], rax              ; Intercambiar
+    
+    pop rbx
+    pop rax
     ret
+
+;////////////////////////////////////////////////////////  Histograma ///////////////////////////////////////////////
+
+
+    
+
+
+
