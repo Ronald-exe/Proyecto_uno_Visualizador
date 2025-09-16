@@ -45,14 +45,14 @@ section .bss
     Buf_numfrutas     resb 512                                                      ;Buffer para denotar los nombres de las frutas   
     Buf_cantidadfruta resq 100                                                      ;Buffer para denotar el numero de frutas que hay
 ;/////////////////////////////////// guardar dato en Ascii ///////////////////////////////////////////////////////////////////////////////
-    buf_num_ascii     resb 64
+    buf_num_ascii     resb 64                                                       ;Para almacenar los valores ascci en numeros
 ;/////////////////////////////////// estructura del histograma ///////////////////////////////////////////////////////////////////////////
-    caracter_barra     resb 1
-    color_barra        resb 1
-    color_fondo        resb 1
-    char_buffer        resb 1
-    num_buffer         resb 20
-    byte_buffer        resb 4
+    caracter_barra     resb 1                                                       ; almacena el carácter que forma cada barra del histograma
+    color_barra        resb 1                                                       ; color asignado a las barras
+    color_fondo        resb 1                                                       ; color del fondo del histograma
+    char_buffer        resb 1                                                       ; buffer temporal para un solo carácter
+    num_buffer         resb 20                                                      ; buffer para almacenar números (ej. texto de entrada)
+    byte_buffer        resb 4                                                       ; buffer de 4 bytes para datos temporales
 ;////////////////////////////////////////////////////// Codificacion  ///////////////////////////////////////////////////////////////////
 
 section .text
@@ -101,7 +101,7 @@ _start:
     call GuardarNombresFrutas
     call Cantidad_fruta
     call OrdenarxNombre
-    ;call GenerarHistograma    
+    call GenerarHistograma    
 
     jmp funcional                                                                     ;Se lee con exito ambos archivos
 
@@ -119,7 +119,7 @@ _start:
     syscall 
 
 ;///////////////////////////////////////// Manejo de errores ///////////////////////////////////////
-
+;/////////////////////////////////////// Son mensajes para detectar errores de flujo////////////////////////
 Fin_programa:
     mov rax, 1
     mov rdi, 1
@@ -137,40 +137,48 @@ Fin_programa_dos:
     jmp salida
 
 ;/////////////////////////////////// imprimir valores en pantall ////////////////////////////////////
+;//////////////////////////////////La utilidad radica en ver los valores que se estan guardando en memoria///////////////
+;//////////////////////////////////
 funcional:
 ; imprimir los datos de configuracion
-    mov rax, 1                 
-    mov rdi, 1
-    mov rsi, buffer_confg
-    mov rdx, 512
-    syscall
-; imprimir los datos de inventario
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, buffer_lista
-    mov rdx, 1024
-    syscall
-; imprimir los datos de ascii
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, datos_config 
-    mov rdx, 1024
-    syscall
-; imprimir de la Nombre de frutas
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, Buf_Nombrefruta 
-    mov rdx, 1024
-    syscall
-; imprimir de la cantidad de frutas
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, Buf_cantidadfruta 
-    mov rdx, 1024
-    syscall
+    ;mov rax, 1                         ; código de la llamada al sistema (sys_write)         
+    ;mov rdi, 1                         ; descriptor de archivo: 1 = salida estándar (stdout)
+    ;mov rsi, buffer_confg              ; dirección del buffer a imprimir
+    ;mov rdx, 512                       ; cantidad de bytes a escribir
+    ;syscall                            ; ejecuta la llamada al sistema (escribe en pantalla)
+
+;///////////////////todos los demas hacen lo mismo pero en diferentes espaciones de memoria/////////////////
+
+; im;primir los datos de inventario
+    ;mov rax, 1
+    ;mov rdi, 1
+    ;mov rsi, buffer_lista                 ;lectura de la lista completa
+    ;mov rdx, 1024
+    ;syscall
+
+; im;primir los datos de ascii
+    ;mov rax, 1
+    ;mov rdi, 1
+    ;mov rsi, datos_config                ;guarda los valores de la lectura de config
+    ;mov rdx, 1024
+    ;syscall
+
+; im;primir de la Nombre de frutas
+    ;mov rax, 1
+    ;mov rdi, 1
+    ;mov rsi, Buf_Nombrefruta              ;Guarda los nombres de las fruta
+    ;mov rdx, 1024
+    ;syscall
+
+; im;primir de la cantidad de frutas
+    ;mov rax, 1
+    ;mov rdi, 1
+    ;mov rsi, Buf_cantidadfruta           ;Guarda las cntidades de las frutas      
+    ;mov rdx, 1024
+    ;syscall
 
 
-    jmp salida
+    jmp salida                            ;Salida inmediata del sistema
 
 ;////////////////////////////////////////   salida del sistema  ///////////////////////////////////////
 salida:
@@ -235,11 +243,11 @@ guardar_valor:
     inc rsi                                 ; Avanzar al siguiente byte del buffer
     jmp buscar_dato                         ; Continuar búsqueda
 
-; ========================================
+; //////////////////////////////////////////////////////
 ; Función: ascii_decimal
 ; Descripción: Convierte un número ASCII a decimal
 ;              y lo deja en AL (1 byte)
-; ========================================
+; /////////////////////////////////////////////////////
 
 ascii_decimal:
     xor rax, rax                            ; Limpiar RAX para acumular el número
@@ -275,10 +283,10 @@ done_ascii:
 
 ;/////////////////////////////////////////////////// Nombres de las frutas del inventario /////////////////////////////////////////////
 
-; ========================================
+; ///////////////////////////////////////////////////////////
 ; Función: GuardarNombresFrutas
 ; Descripción: Extrae los nombres de frutas del inventario
-; ========================================
+; ///////////////////////////////////////////////////////////
 GuardarNombresFrutas:
     mov rsi, buffer_lista        ; RSI -> apuntar al inicio del buffer de entrada (contenido de inventario.txt)
     mov rdi, Buf_Nombrefruta     ; RDI -> apuntar al buffer donde se guardarán los nombres de las frutas
@@ -339,10 +347,10 @@ GFListo:
 
 ;/////////////////////////////////////////////////// valores para la lectura del inventario //////////////////////////////////////////
 
-; ========================================
+; /////////////////////////////////////////////////
 ; Función: Cantidad_fruta
 ; Descripción: Extrae las cantidades numéricas del inventario
-; ========================================
+; /////////////////////////////////////////////////
 Cantidad_fruta:
     mov rsi, buffer_lista                   ; Apuntar al inicio del buffer
     mov rdi, Buf_cantidadfruta              ; Buffer para cantidades NUMÉRICAS
@@ -386,9 +394,9 @@ done_ascii_cantidad:
     mov [Buf_numfrutas], rcx                ; Guardar número de frutas
     ret
 
-; ========================================
+; //////////////////////////////////////////
 ; Función: ascii_decimal_cantidad
-; ========================================
+; //////////////////////////////////////////
 ascii_decimal_cantidad:
     xor rax, rax                            ; Limpiar RAX
     xor rbx, rbx
@@ -415,10 +423,10 @@ fin_convert_cantidad:
 
 ;/////////////////////////////////////////////////// Ordenar lista alfabeticamente  //////////////////////////////////////////////////
 
-; ========================================
+; ////////////////////////////////////////////////////////////////////////////////
 ; Función: OrdenarxNombre
 ; Descripción: Ordena la lista de frutas alfabéticamente usando Bubble Sort
-; ========================================
+; ////////////////////////////////////////////////////////////////////////////////
 
 OrdenarxNombre:
     push r12
@@ -509,8 +517,7 @@ finish_sort:
     pop r12
     ret
 
-; ========================================
-; ========================================
+; ///////////////////////////////////////////////////////////////////////
 comparar_strings:
     push rcx
     xor rcx, rcx
@@ -556,8 +563,7 @@ done_compare:
     pop rcx
     ret
 
-; ========================================
-; ========================================
+; //////////////////////////////////////////////////////////
 intercambiar_nombres:
     push rcx
     push rax
@@ -579,8 +585,7 @@ swap_names:
     pop rcx
     ret
 
-; ========================================
-; ========================================
+; /////////////////////////////////////////////////////////////////
 intercambiar_cantidades:
     push rax
     push rbx
@@ -596,7 +601,398 @@ intercambiar_cantidades:
 
 ;////////////////////////////////////////////////////////  Histograma ///////////////////////////////////////////////
 
+; ========================================
+; 
+;    CONFIGURACION; Paso 4
+;              
+; ========================================
+GenerarHistograma:
+    push r12        ; Guardar registros que vamos a usar
+    push r13
+    push r14
+    push r15
+    push rbx
+    
+    ; Obtener configuración de colores y caracteres
+    mov r12, datos_config       ; Puntero a configuración
+    mov al, [r12]               ; Carácter para las barras
+    mov [caracter_barra], al    ; Guardarlo
+    
+    mov al, [r12 + 1]           ; Color de las barras
+    mov [color_barra], al       ; Guardarlo
+    
+    mov al, [r12 + 2]           ; Color de fondo
+    mov [color_fondo], al       ; Guardarlo
+    
+    ; Preparar datos para procesar
+    mov r13, Buf_Nombrefruta    ; Nombres de frutas
+    mov r14, Buf_cantidadfruta  ; Cantidades
+    mov r15, [Buf_numfrutas]    ; Total de frutas
+    
+    xor rbx, rbx                ; Iniciar contador en 0
 
+imprimir_fila:
+    cmp rbx, r15                ; ¿Procesamos todas las frutas?
+    jge fin_histograma          ; Si sí, terminar
+    
+    ; Imprimir nombre de la fruta
+    mov rax, rbx
+    imul rax, 16                ; Cada nombre ocupa 16 bytes
+    lea rsi, [r13 + rax]        ; Apuntar al nombre actual
+    
+    call imprimir_string        ; Imprimir nombre
+    call imprimir_dos_puntos    ; Imprimir ":"
+    call imprimir_espacio       ; Imprimir espacio
+    
+    ; Aplicar colores ANSI
+    call imprimir_codigos_ansi_corregido
+    
+    ; Preparar para imprimir barras
+    mov rax, rbx
+    imul rax, 8                 ; Cada cantidad ocupa 8 bytes
+    mov rcx, [r14 + rax]        ; Obtener cantidad
+    
+    ; Verificar si hay cero frutas
+    cmp rcx, 0
+    je saltar_barras            ; Saltar si es cero
+
+imprimir_barras:
+    push rcx                    ; Guardar contador
+    mov al, [caracter_barra]    ; Carácter a imprimir
+    call imprimir_caracter      ; Imprimir una barra
+    pop rcx                     ; Recuperar contador
+    loop imprimir_barras        ; Repetir según cantidad
+
+saltar_barras:
+    ; Restaurar colores terminal
+    call imprimir_reset_ansi
+    
+    ; Imprimir cantidad numérica
+    call imprimir_espacio       ; Espacio antes del número
+    mov rax, rbx
+    imul rax, 8
+    mov rax, [r14 + rax]        ; Obtener cantidad otra vez
+    call imprimir_numero        ; Imprimir número
+    
+    ; Nueva línea para siguiente fruta
+    call imprimir_nueva_linea
+    
+    inc rbx                     ; Siguiente fruta
+    jmp imprimir_fila           ; Repetir
+
+fin_histograma:
+    pop rbx                     ; Restaurar registros
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    ret                         ; Volver
+
+; ========================================
+; Rutina para imprimir códigos ANSI de color
+imprimir_codigos_ansi_corregido:
+    push rax                    ; Guardar registros
+    push rdi
+    push rsi
+    push rdx
+    push rbx
+    push rcx
+    
+    ; Imprimir código de escape para fondo
+    mov rax, 1
+    mov rdi, 1                  ; stdout
+    mov rsi, ansi_esc           ; Carácter ESC
+    mov rdx, 1
+    syscall
+    
+    mov rax, 1
+    mov rsi, ansi_open          ; Carácter "["
+    mov rdx, 1
+    syscall
+    
+    ; Imprimir código numérico de fondo
+    movzx rax, byte [color_fondo]
+    call imprimir_numero_directo ; Sin espacios
+    
+    mov rax, 1
+    mov rsi, ansi_m             ; Carácter "m"
+    mov rdx, 1
+    syscall
+    
+    ; Imprimir código de escape para color de barra
+    mov rax, 1
+    mov rsi, ansi_esc           ; ESC again
+    mov rdx, 1
+    syscall
+    
+    mov rax, 1
+    mov rsi, ansi_open          ; "["
+    mov rdx, 1
+    syscall
+    
+    ; Imprimir código numérico de barra
+    movzx rax, byte [color_barra]
+    call imprimir_numero_directo ; Sin espacios
+    
+    mov rax, 1
+    mov rsi, ansi_m             ; "m"
+    mov rdx, 1
+    syscall
+    
+    pop rcx                     ; Restaurar registros
+    pop rbx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+
+; ========================================
+; Rutina para imprimir números sin espacios
+imprimir_numero_directo:
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Convertir número a string
+    mov rdi, num_buffer + 10    ; Buffer temporal
+    mov byte [rdi], 0           ; Terminador nulo
+    
+    mov rbx, 10                 ; Base decimal
+    xor rcx, rcx                ; Contador de dígitos
+    
+    ; Manejar caso especial de cero
+    test rax, rax
+    jnz convert_directo
+    mov byte [rdi - 1], '0'     ; Simplemente poner '0'
+    dec rdi
+    inc rcx
+    jmp print_directo
+    
+convert_directo:
+    xor rdx, rdx
+    div rbx                     ; Dividir por 10
+    add dl, '0'                 ; Convertir a ASCII
+    dec rdi                     ; Mover hacia atrás
+    mov [rdi], dl               ; Guardar dígito
+    inc rcx                     ; Contar dígito
+    test rax, rax
+    jnz convert_directo         ; Continuar si no es cero
+    
+print_directo:
+    ; Imprimir el número convertido
+    mov rsi, rdi                ; Puntero al string
+    mov rdx, rcx                ; Longitud
+    mov rax, 1
+    mov rdi, 1                  ; stdout
+    syscall
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    ret
+
+; ========================================
+; Restablecer colores terminal a defaults
+imprimir_reset_ansi:
+    push rax
+    push rdi
+    push rsi
+    push rdx
+    
+    mov rax, 1
+    mov rdi, 1                  ; stdout
+    mov rsi, ansi_reset_completo ; Código reset
+    mov rdx, ansi_reset_len     ; Longitud fija
+    syscall
+    
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+
+; ========================================
+; Rutinas auxiliares de impresión
+imprimir_string:
+    push rcx
+    push rdx
+    push rax
+    push rdi
+    
+    ; Calcular longitud del string
+    mov rdi, rsi
+    call strlen
+    mov rdx, rax                ; Longitud en rdx
+    
+    mov rax, 1                  ; sys_write
+    mov rdi, 1                  ; stdout
+    syscall
+    
+    pop rdi
+    pop rax
+    pop rdx
+    pop rcx
+    ret
+
+imprimir_dos_puntos:
+    push rax
+    push rdi
+    push rsi
+    push rdx
+    
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, dos_puntos_msg     ; Solo ":"
+    mov rdx, 1
+    syscall
+    
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+
+imprimir_espacio:
+    push rax
+    push rdi
+    push rsi
+    push rdx
+    
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, espacio_msg        ; Solo " "
+    mov rdx, 1
+    syscall
+    
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+
+imprimir_caracter:
+    push rdi
+    push rsi
+    push rdx
+    
+    mov [char_buffer], al       ; Guardar carácter en buffer
+    
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, char_buffer        ; Imprimir desde buffer
+    mov rdx, 1
+    syscall
+    
+    pop rdx
+    pop rsi
+    pop rdi
+    ret
+
+imprimir_numero:
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Convertir número a string
+    mov rdi, num_buffer + 18    ; Buffer grande
+    mov byte [rdi], 0           ; Terminador nulo
+    call int_to_string          ; Conversión
+    
+    ; Encontrar inicio del string
+    mov rsi, rdi
+    call strlen                 ; Calcular longitud
+    mov rdx, rax                ; Longitud en rdx
+    
+    mov rax, 1                  ; sys_write
+    mov rdi, 1                  ; stdout
+    syscall
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    ret
+
+imprimir_nueva_linea:
+    push rax
+    push rdi
+    push rsi
+    push rdx
+    
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, nueva_linea_msg    ; Solo "\n"
+    mov rdx, 1
+    syscall
+    
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rax
+    ret
+
+; ========================================
+; Utilidades
+strlen:
+    push rcx
+    push rdi
+    
+    mov rdi, rsi                ; Puntero al string
+    xor rcx, rcx
+    not rcx                     ; RCX = -1
+    xor al, al                  ; Buscar cero
+    cld                         ; Dirección forward
+    repne scasb                 ; Buscar terminador
+    not rcx                     ; Complemento
+    dec rcx                     ; Ajustar
+    mov rax, rcx                ; Longitud en rax
+    
+    pop rdi
+    pop rcx
+    ret
+
+int_to_string:
+    push rbx
+    push rcx
+    push rdx
+    push rdi
+    
+    mov rbx, 10                 ; Base decimal
+    xor rcx, rcx                ; Contador dígitos
+    
+    test rax, rax               ; ¿Es cero?
+    jnz convert_loop
+    mov byte [rdi - 1], '0'     ; Poner '0'
+    dec rdi
+    inc rcx
+    jmp done_convert
+    
+convert_loop:
+    xor rdx, rdx
+    div rbx                     ; RAX = cociente, RDX = resto
+    add dl, '0'                 ; Convertir a ASCII
+    dec rdi                     ; Escribir hacia atrás
+    mov [rdi], dl               ; Guardar dígito
+    inc rcx                     ; Contar dígito
+    test rax, rax
+    jnz convert_loop            ; Continuar si no es cero
+    
+done_convert:
+    pop rdi
+    pop rdx
+    pop rcx
+    pop rbx
+    ret
     
 
 
