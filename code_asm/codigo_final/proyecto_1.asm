@@ -15,15 +15,15 @@ section .data
     error_inventario db 'No se encontro el archivo de inventario',0xa            ;Impresion error de configuracion en pantalla
     l_error_inventario equ $-error_inventario
 ;-----------------Valores para el histograma--------------------------------------
-    dos_puntos_msg      db ":", 0
-    espacio_msg         db " ", 0
-    nueva_linea_msg     db 10, 0
-    
-    ansi_esc            db 0x1B      ; Carácter ESC
-    ansi_open           db "[", 0
-    ansi_m              db "m", 0
-    ansi_reset_completo db 0x1B, "[0m", 0
-    ansi_reset_len      equ $ - ansi_reset_completo
+    dos_puntos_msg      db ":", 0        ; ':' para imprimir
+    espacio_msg         db " ", 0        ; espacio para separar
+    nueva_linea_msg     db 10, 0         ; salto de línea
+
+    ansi_esc            db 0x1B           ; ESC para secuencias ANSI
+    ansi_open           db "[", 0         ; inicio secuencia ANSI
+    ansi_m              db "m", 0         ; fin secuencia ANSI
+    ansi_reset_completo db 0x1B, "[0m", 0 ; reset de formato ANSI
+    ansi_reset_len      equ $ - ansi_reset_completo ; longitud de reset
 
 section .bss
 ; /////////////////////////////////////// buffer para lectura general ////////////////////////////////////////////////////////////////////
