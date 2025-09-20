@@ -429,175 +429,175 @@ fin_convert_cantidad:
 ; ////////////////////////////////////////////////////////////////////////////////
 
 OrdenarxNombre:
-    push r12
-    push r13
-    push r14
-    push r15
-    push rbx
-    push rsi
-    push rdi
+    push r12                    ; Guardar registro r12
+    push r13                    ; Guardar registro r13
+    push r14                    ; Guardar registro r14
+    push r15                    ; Guardar registro r15
+    push rbx                    ; Guardar registro rbx
+    push rsi                    ; Guardar registro rsi
+    push rdi                    ; Guardar registro rdi
     
-    mov r12, Buf_Nombrefruta      ; base nombres
-    mov r13, Buf_cantidadfruta    ; base cantidades
-    mov r14, [Buf_numfrutas]      ; número de elementos
-    cmp r14, 1
-    jle finish_sort               ; si 0 o 1 elementos
+    mov r12, Buf_Nombrefruta      ; Cargar dirección base de nombres
+    mov r13, Buf_cantidadfruta    ; Cargar dirección base de cantidades
+    mov r14, [Buf_numfrutas]      ; Cargar número total de elementos
+    cmp r14, 1                   ; Comparar si hay 0 o 1 elemento
+    jle finish_sort               ; Saltar al final si ya está ordenado
     
-    dec r14                       ; n-1
-    mov r15, r14                  ; i = n-1 (para bubble sort)
+    dec r14                       ; n-1 (para bubble sort)
+    mov r15, r14                  ; i = n-1 (contador externo)
 
 outer_loop:
-    xor r11, r11                  ; Bandera para detectar intercambios
-    xor r10, r10                  ; j = 0
+    xor r11, r11                  ; Inicializar bandera de intercambios a 0
+    xor r10, r10                  ; j = 0 (contador interno)
 
 inner_loop:
-    cmp r10, r15                  ; j < i?
-    jge check_swap_done
+    cmp r10, r15                  ; Comparar j con i
+    jge check_swap_done           ; Saltar si j >= i
     
     ; Comparar nombre[j] con nombre[j+1]
-    mov rax, r10
-    imul rax, 16
-    lea rsi, [r12 + rax]          ; nombre[j]
+    mov rax, r10                  ; Cargar índice j
+    imul rax, 16                  ; Multiplicar por 16 (tamaño de cada nombre)
+    lea rsi, [r12 + rax]          ; Calcular dirección de nombre[j]
     
-    mov rbx, r10
-    inc rbx
-    imul rbx, 16
-    lea rdi, [r12 + rbx]          ; nombre[j+1]
+    mov rbx, r10                  ; Cargar índice j
+    inc rbx                       ; j+1
+    imul rbx, 16                  ; Multiplicar por 16
+    lea rdi, [r12 + rbx]          ; Calcular dirección de nombre[j+1]
     
-    call comparar_strings
-    cmp rax, 0
-    jle next_j                    ; si nombre[j] <= nombre[j+1], seguir
+    call comparar_strings         ; Llamar función para comparar strings
+    cmp rax, 0                    ; Comparar resultado
+    jle next_j                    ; Saltar si nombre[j] <= nombre[j+1]
     
     ; INTERCAMBIAR elemento[j] con elemento[j+1]
     ; Intercambiar nombres
-    mov rax, r10
-    imul rax, 16
-    lea rsi, [r12 + rax]          ; nombre[j]
+    mov rax, r10                  ; Cargar índice j
+    imul rax, 16                  ; Multiplicar por 16
+    lea rsi, [r12 + rax]          ; Calcular dirección de nombre[j]
     
-    mov rbx, r10
-    inc rbx
-    imul rbx, 16
-    lea rdi, [r12 + rbx]          ; nombre[j+1]
+    mov rbx, r10                  ; Cargar índice j
+    inc rbx                       ; j+1
+    imul rbx, 16                  ; Multiplicar por 16
+    lea rdi, [r12 + rbx]          ; Calcular dirección de nombre[j+1]
     
-    call intercambiar_nombres
+    call intercambiar_nombres     ; Llamar función para intercambiar nombres
     
     ; Intercambiar cantidades
-    mov rax, r10
-    imul rax, 8
-    lea rsi, [r13 + rax]          ; cantidad[j]
+    mov rax, r10                  ; Cargar índice j
+    imul rax, 8                   ; Multiplicar por 8 (tamaño de cada cantidad)
+    lea rsi, [r13 + rax]          ; Calcular dirección de cantidad[j]
     
-    mov rbx, r10
-    inc rbx
-    imul rbx, 8
-    lea rdi, [r13 + rbx]          ; cantidad[j+1]
+    mov rbx, r10                  ; Cargar índice j
+    inc rbx                       ; j+1
+    imul rbx, 8                   ; Multiplicar por 8
+    lea rdi, [r13 + rbx]          ; Calcular dirección de cantidad[j+1]
     
-    call intercambiar_cantidades
+    call intercambiar_cantidades  ; Llamar función para intercambiar cantidades
     
-    mov r11, 1                    ; Indicar que hubo intercambio
+    mov r11, 1                    ; Establecer bandera de intercambio a 1
 
 next_j:
-    inc r10
-    jmp inner_loop
+    inc r10                       ; Incrementar j
+    jmp inner_loop                ; Volver al inicio del loop interno
 
 check_swap_done:
     ; Verificar si hubo intercambios en esta pasada
-    cmp r11, 0
-    je finish_sort                ; Si no hubo intercambios, está ordenado
+    cmp r11, 0                    ; Comparar bandera de intercambios
+    je finish_sort                ; Saltar al final si no hubo intercambios
     
-    dec r15                       ; i--
+    dec r15                       ; Decrementar i
     jnz outer_loop                ; Continuar mientras i > 0
 
 finish_sort:
-    pop rdi
-    pop rsi
-    pop rbx
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    ret
+    pop rdi                       ; Restaurar registro rdi
+    pop rsi                       ; Restaurar registro rsi
+    pop rbx                       ; Restaurar registro rbx
+    pop r15                       ; Restaurar registro r15
+    pop r14                       ; Restaurar registro r14
+    pop r13                       ; Restaurar registro r13
+    pop r12                       ; Restaurar registro r12
+    ret                           ; Retornar de la función
 
 ; ///////////////////////////////////////////////////////////////////////
 comparar_strings:
-    push rcx
-    xor rcx, rcx
+    push rcx                      ; Guardar registro rcx
+    xor rcx, rcx                  ; Inicializar contador a 0
     
 compare_loop:
-    mov al, [rsi + rcx]          ; carácter del primer string
-    mov bl, [rdi + rcx]          ; carácter del segundo string
+    mov al, [rsi + rcx]          ; Cargar carácter del primer string
+    mov bl, [rdi + rcx]          ; Cargar carácter del segundo string
     
     ; Si llegamos al final de ambos strings, son iguales
-    cmp al, 0
-    je check_second_end
-    cmp bl, 0
-    je check_first_end
+    cmp al, 0                    ; Verificar fin del primer string
+    je check_second_end          ; Saltar si es fin de string
+    cmp bl, 0                    ; Verificar fin del segundo string
+    je check_first_end           ; Saltar si es fin de string
     
     ; Comparación alfabética
-    cmp al, bl
-    jl less_than
-    jg greater_than
+    cmp al, bl                   ; Comparar caracteres
+    jl less_than                 ; Saltar si primer string es menor
+    jg greater_than              ; Saltar si primer string es mayor
     
-    inc rcx
-    jmp compare_loop
+    inc rcx                      ; Incrementar contador
+    jmp compare_loop             ; Continuar comparación
 
 check_second_end:
-    cmp bl, 0
-    je equal
-    jmp less_than
+    cmp bl, 0                    ; Verificar si segundo string también terminó
+    je equal                     ; Saltar si son iguales
+    jmp less_than                ; Saltar si primer string es menor
 
 check_first_end:
-    jmp greater_than
+    jmp greater_than             ; Saltar si primer string es mayor
 
 less_than:
-    mov rax, -1                  ; primer string es menor
-    jmp done_compare
+    mov rax, -1                  ; Devolver -1 (primer string es menor)
+    jmp done_compare             ; Saltar al final
     
 greater_than:
-    mov rax, 1                   ; primer string es mayor
-    jmp done_compare
+    mov rax, 1                   ; Devolver 1 (primer string es mayor)
+    jmp done_compare             ; Saltar al final
     
 equal:
-    xor rax, rax                 ; strings iguales
+    xor rax, rax                 ; Devolver 0 (strings iguales)
     
 done_compare:
-    pop rcx
-    ret
+    pop rcx                      ; Restaurar registro rcx
+    ret                          ; Retornar de la función
 
 ; //////////////////////////////////////////////////////////
 intercambiar_nombres:
-    push rcx
-    push rax
-    push rbx
+    push rcx                     ; Guardar registro rcx
+    push rax                     ; Guardar registro rax
+    push rbx                     ; Guardar registro rbx
     
-    mov rcx, 16                  ; 16 bytes por nombre
+    mov rcx, 16                  ; 16 bytes por nombre (contador)
 swap_names:
     mov al, [rsi]               ; Cargar byte del primer nombre
     mov bl, [rdi]               ; Cargar byte del segundo nombre
-    mov [rsi], bl               ; Intercambiar
-    mov [rdi], al               ; Intercambiar
-    inc rsi
-    inc rdi
-    dec rcx
-    jnz swap_names
+    mov [rsi], bl               ; Intercambiar: poner segundo en primero
+    mov [rdi], al               ; Intercambiar: poner primero en segundo
+    inc rsi                     ; Avanzar al siguiente byte del primer nombre
+    inc rdi                     ; Avanzar al siguiente byte del segundo nombre
+    dec rcx                     ; Decrementar contador
+    jnz swap_names              ; Continuar mientras contador > 0
     
-    pop rbx
-    pop rax
-    pop rcx
-    ret
+    pop rbx                     ; Restaurar registro rbx
+    pop rax                     ; Restaurar registro rax
+    pop rcx                     ; Restaurar registro rcx
+    ret                         ; Retornar de la función
 
 ; /////////////////////////////////////////////////////////////////
 intercambiar_cantidades:
-    push rax
-    push rbx
+    push rax                     ; Guardar registro rax
+    push rbx                     ; Guardar registro rbx
     
     mov rax, [rsi]              ; Cargar cantidad del primer elemento
     mov rbx, [rdi]              ; Cargar cantidad del segundo elemento
-    mov [rsi], rbx              ; Intercambiar
-    mov [rdi], rax              ; Intercambiar
+    mov [rsi], rbx              ; Intercambiar: poner segundo en primero
+    mov [rdi], rax              ; Intercambiar: poner primero en segundo
     
-    pop rbx
-    pop rax
-    ret
+    pop rbx                     ; Restaurar registro rbx
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 ;////////////////////////////////////////////////////////  Histograma ///////////////////////////////////////////////
 
@@ -607,392 +607,391 @@ intercambiar_cantidades:
 ;              
 ; ========================================
 GenerarHistograma:
-    push r12        ; Guardar registros que vamos a usar
-    push r13
-    push r14
-    push r15
-    push rbx
+    push r12        ; Guardar registro r12 en la pila
+    push r13        ; Guardar registro r13 en la pila
+    push r14        ; Guardar registro r14 en la pila
+    push r15        ; Guardar registro r15 en la pila
+    push rbx        ; Guardar registro rbx en la pila
     
     ; Obtener configuración de colores y caracteres
-    mov r12, datos_config       ; Puntero a configuración
-    mov al, [r12]               ; Carácter para las barras
-    mov [caracter_barra], al    ; Guardarlo
+    mov r12, datos_config       ; Cargar dirección de configuración en r12
+    mov al, [r12]               ; Cargar carácter de barra desde memoria
+    mov [caracter_barra], al    ; Guardar carácter en variable
     
-    mov al, [r12 + 1]           ; Color de las barras
-    mov [color_barra], al       ; Guardarlo
+    mov al, [r12 + 1]           ; Cargar color de barra desde memoria
+    mov [color_barra], al       ; Guardar color en variable
     
-    mov al, [r12 + 2]           ; Color de fondo
-    mov [color_fondo], al       ; Guardarlo
+    mov al, [r12 + 2]           ; Cargar color de fondo desde memoria
+    mov [color_fondo], al       ; Guardar color en variable
     
     ; Preparar datos para procesar
-    mov r13, Buf_Nombrefruta    ; Nombres de frutas
-    mov r14, Buf_cantidadfruta  ; Cantidades
-    mov r15, [Buf_numfrutas]    ; Total de frutas
+    mov r13, Buf_Nombrefruta    ; Cargar dirección de nombres de frutas
+    mov r14, Buf_cantidadfruta  ; Cargar dirección de cantidades
+    mov r15, [Buf_numfrutas]    ; Cargar número total de frutas
     
-    xor rbx, rbx                ; Iniciar contador en 0
+    xor rbx, rbx                ; Inicializar contador de frutas a 0
 
 imprimir_fila:
-    cmp rbx, r15                ; ¿Procesamos todas las frutas?
-    jge fin_histograma          ; Si sí, terminar
+    cmp rbx, r15                ; Comparar contador con total de frutas
+    jge fin_histograma          ; Saltar al final si ya se procesaron todas
     
     ; Imprimir nombre de la fruta
-    mov rax, rbx
-    imul rax, 16                ; Cada nombre ocupa 16 bytes
-    lea rsi, [r13 + rax]        ; Apuntar al nombre actual
+    mov rax, rbx                ; Copiar índice actual
+    imul rax, 16                ; Multiplicar por 16 (tamaño de cada nombre)
+    lea rsi, [r13 + rax]        ; Calcular dirección del nombre actual
     
-    call imprimir_string        ; Imprimir nombre
-    call imprimir_dos_puntos    ; Imprimir ":"
-    call imprimir_espacio       ; Imprimir espacio
+    call imprimir_string        ; Llamar función para imprimir string
+    call imprimir_dos_puntos    ; Llamar función para imprimir ":"
+    call imprimir_espacio       ; Llamar función para imprimir espacio
     
     ; Aplicar colores ANSI
-    call imprimir_codigos_ansi_corregido
+    call imprimir_codigos_ansi_corregido ; Llamar función para colores
     
     ; Preparar para imprimir barras
-    mov rax, rbx
-    imul rax, 8                 ; Cada cantidad ocupa 8 bytes
-    mov rcx, [r14 + rax]        ; Obtener cantidad
+    mov rax, rbx                ; Copiar índice actual
+    imul rax, 8                 ; Multiplicar por 8 (tamaño de cada cantidad)
+    mov rcx, [r14 + rax]        ; Cargar cantidad de frutas actual
     
     ; Verificar si hay cero frutas
-    cmp rcx, 0
-    je saltar_barras            ; Saltar si es cero
+    cmp rcx, 0                  ; Comparar cantidad con cero
+    je saltar_barras            ; Saltar impresión de barras si es cero
 
 imprimir_barras:
-    push rcx                    ; Guardar contador
-    mov al, [caracter_barra]    ; Carácter a imprimir
-    call imprimir_caracter      ; Imprimir una barra
-    pop rcx                     ; Recuperar contador
-    loop imprimir_barras        ; Repetir según cantidad
+    push rcx                    ; Guardar contador de barras en pila
+    mov al, [caracter_barra]    ; Cargar carácter de barra
+    call imprimir_caracter      ; Llamar función para imprimir carácter
+    pop rcx                     ; Recuperar contador de barras
+    loop imprimir_barras        ; Repetir loop según cantidad en rcx
 
 saltar_barras:
     ; Restaurar colores terminal
-    call imprimir_reset_ansi
+    call imprimir_reset_ansi    ; Llamar función para resetear colores
     
     ; Imprimir cantidad numérica
-    call imprimir_espacio       ; Espacio antes del número
-    mov rax, rbx
-    imul rax, 8
-    mov rax, [r14 + rax]        ; Obtener cantidad otra vez
-    call imprimir_numero        ; Imprimir número
+    call imprimir_espacio       ; Llamar función para imprimir espacio
+    mov rax, rbx                ; Copiar índice actual
+    imul rax, 8                 ; Multiplicar por 8
+    mov rax, [r14 + rax]        ; Cargar cantidad de frutas actual
+    call imprimir_numero        ; Llamar función para imprimir número
     
     ; Nueva línea para siguiente fruta
-    call imprimir_nueva_linea
+    call imprimir_nueva_linea   ; Llamar función para nueva línea
     
-    inc rbx                     ; Siguiente fruta
-    jmp imprimir_fila           ; Repetir
+    inc rbx                     ; Incrementar contador de frutas
+    jmp imprimir_fila           ; Saltar al inicio del loop
 
 fin_histograma:
-    pop rbx                     ; Restaurar registros
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    ret                         ; Volver
+    pop rbx                     ; Restaurar registro rbx
+    pop r15                     ; Restaurar registro r15
+    pop r14                     ; Restaurar registro r14
+    pop r13                     ; Restaurar registro r13
+    pop r12                     ; Restaurar registro r12
+    ret                         ; Retornar de la función
 
 ; ========================================
 ; Rutina para imprimir códigos ANSI de color
 imprimir_codigos_ansi_corregido:
-    push rax                    ; Guardar registros
-    push rdi
-    push rsi
-    push rdx
-    push rbx
-    push rcx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
+    push rbx                    ; Guardar registro rbx
+    push rcx                    ; Guardar registro rcx
     
     ; Imprimir código de escape para fondo
-    mov rax, 1
-    mov rdi, 1                  ; stdout
-    mov rsi, ansi_esc           ; Carácter ESC
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, ansi_esc           ; carácter de escape ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    mov rax, 1
-    mov rsi, ansi_open          ; Carácter "["
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rsi, ansi_open          ; carácter "[" de ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
     ; Imprimir código numérico de fondo
-    movzx rax, byte [color_fondo]
-    call imprimir_numero_directo ; Sin espacios
+    movzx rax, byte [color_fondo] ; Cargar color de fondo (zero-extend)
+    call imprimir_numero_directo ; Llamar función para imprimir número
     
-    mov rax, 1
-    mov rsi, ansi_m             ; Carácter "m"
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rsi, ansi_m             ; carácter "m" de ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
     ; Imprimir código de escape para color de barra
-    mov rax, 1
-    mov rsi, ansi_esc           ; ESC again
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rsi, ansi_esc           ; carácter de escape ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    mov rax, 1
-    mov rsi, ansi_open          ; "["
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rsi, ansi_open          ; carácter "[" de ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
     ; Imprimir código numérico de barra
-    movzx rax, byte [color_barra]
-    call imprimir_numero_directo ; Sin espacios
+    movzx rax, byte [color_barra] ; Cargar color de barra (zero-extend)
+    call imprimir_numero_directo ; Llamar función para imprimir número
     
-    mov rax, 1
-    mov rsi, ansi_m             ; "m"
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rsi, ansi_m             ; carácter "m" de ANSI
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    pop rcx                     ; Restaurar registros
-    pop rbx
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
+    pop rcx                     ; Restaurar registro rcx
+    pop rbx                     ; Restaurar registro rbx
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 ; ========================================
 ; Rutina para imprimir números sin espacios
 imprimir_numero_directo:
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
+    push rbx                    ; Guardar registro rbx
+    push rcx                    ; Guardar registro rcx
+    push rdx                    ; Guardar registro rdx
+    push rsi                    ; Guardar registro rsi
+    push rdi                    ; Guardar registro rdi
     
     ; Convertir número a string
-    mov rdi, num_buffer + 10    ; Buffer temporal
-    mov byte [rdi], 0           ; Terminador nulo
+    mov rdi, num_buffer + 10    ; Apuntar a buffer temporal
+    mov byte [rdi], 0           ; Agregar terminador nulo
     
-    mov rbx, 10                 ; Base decimal
-    xor rcx, rcx                ; Contador de dígitos
+    mov rbx, 10                 ; Base decimal para conversión
+    xor rcx, rcx                ; Inicializar contador de dígitos
     
     ; Manejar caso especial de cero
-    test rax, rax
-    jnz convert_directo
-    mov byte [rdi - 1], '0'     ; Simplemente poner '0'
-    dec rdi
-    inc rcx
-    jmp print_directo
+    test rax, rax               ; Verificar si número es cero
+    jnz convert_directo         ; Saltar si no es cero
+    mov byte [rdi - 1], '0'     ; Poner carácter '0'
+    dec rdi                     ; Ajustar puntero
+    inc rcx                     ; Incrementar contador de dígitos
+    jmp print_directo           ; Saltar a impresión
     
 convert_directo:
-    xor rdx, rdx
-    div rbx                     ; Dividir por 10
-    add dl, '0'                 ; Convertir a ASCII
-    dec rdi                     ; Mover hacia atrás
+    xor rdx, rdx                ; Limpiar registro para división
+    div rbx                     ; Dividir rax por 10
+    add dl, '0'                 ; Convertir resto a ASCII
+    dec rdi                     ; Mover puntero hacia atrás
     mov [rdi], dl               ; Guardar dígito
-    inc rcx                     ; Contar dígito
-    test rax, rax
+    inc rcx                     ; Incrementar contador de dígitos
+    test rax, rax               ; Verificar si cociente es cero
     jnz convert_directo         ; Continuar si no es cero
     
 print_directo:
     ; Imprimir el número convertido
-    mov rsi, rdi                ; Puntero al string
-    mov rdx, rcx                ; Longitud
-    mov rax, 1
-    mov rdi, 1                  ; stdout
-    syscall
+    mov rsi, rdi                ; Puntero al string convertido
+    mov rdx, rcx                ; Longitud del string
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    syscall                     ; llamar al sistema
     
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    ret
+    pop rdi                     ; Restaurar registro rdi
+    pop rsi                     ; Restaurar registro rsi
+    pop rdx                     ; Restaurar registro rdx
+    pop rcx                     ; Restaurar registro rcx
+    pop rbx                     ; Restaurar registro rbx
+    ret                         ; Retornar de la función
 
 ; ========================================
 ; Restablecer colores terminal a defaults
 imprimir_reset_ansi:
-    push rax
-    push rdi
-    push rsi
-    push rdx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
     
-    mov rax, 1
-    mov rdi, 1                  ; stdout
-    mov rsi, ansi_reset_completo ; Código reset
-    mov rdx, ansi_reset_len     ; Longitud fija
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, ansi_reset_completo ; código ANSI para reset
+    mov rdx, ansi_reset_len     ; longitud del código
+    syscall                     ; llamar al sistema
     
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 ; ========================================
 ; Rutinas auxiliares de impresión
 imprimir_string:
-    push rcx
-    push rdx
-    push rax
-    push rdi
+    push rcx                    ; Guardar registro rcx
+    push rdx                    ; Guardar registro rdx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
     
     ; Calcular longitud del string
-    mov rdi, rsi
-    call strlen
-    mov rdx, rax                ; Longitud en rdx
+    mov rdi, rsi                ; Copiar puntero al string
+    call strlen                 ; Llamar función para calcular longitud
+    mov rdx, rax                ; Mover longitud a rdx
     
-    mov rax, 1                  ; sys_write
-    mov rdi, 1                  ; stdout
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    syscall                     ; llamar al sistema
     
-    pop rdi
-    pop rax
-    pop rdx
-    pop rcx
-    ret
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    pop rdx                     ; Restaurar registro rdx
+    pop rcx                     ; Restaurar registro rcx
+    ret                         ; Retornar de la función
 
 imprimir_dos_puntos:
-    push rax
-    push rdi
-    push rsi
-    push rdx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
     
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, dos_puntos_msg     ; Solo ":"
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, dos_puntos_msg     ; mensaje de dos puntos
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 imprimir_espacio:
-    push rax
-    push rdi
-    push rsi
-    push rdx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
     
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, espacio_msg        ; Solo " "
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, espacio_msg        ; mensaje de espacio
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 imprimir_caracter:
-    push rdi
-    push rsi
-    push rdx
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
     
     mov [char_buffer], al       ; Guardar carácter en buffer
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, char_buffer        ; buffer con el carácter
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, char_buffer        ; Imprimir desde buffer
-    mov rdx, 1
-    syscall
-    
-    pop rdx
-    pop rsi
-    pop rdi
-    ret
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    ret                         ; Retornar de la función
 
 imprimir_numero:
-    push rax
-    push rbx
-    push rcx
-    push rdx
-    push rsi
-    push rdi
+    push rax                    ; Guardar registro rax
+    push rbx                    ; Guardar registro rbx
+    push rcx                    ; Guardar registro rcx
+    push rdx                    ; Guardar registro rdx
+    push rsi                    ; Guardar registro rsi
+    push rdi                    ; Guardar registro rdi
     
     ; Convertir número a string
-    mov rdi, num_buffer + 18    ; Buffer grande
-    mov byte [rdi], 0           ; Terminador nulo
-    call int_to_string          ; Conversión
+    mov rdi, num_buffer + 18    ; Buffer grande para conversión
+    mov byte [rdi], 0           ; Agregar terminador nulo
+    call int_to_string          ; Llamar función de conversión
     
     ; Encontrar inicio del string
-    mov rsi, rdi
-    call strlen                 ; Calcular longitud
-    mov rdx, rax                ; Longitud en rdx
+    mov rsi, rdi                ; Puntero al string convertido
+    call strlen                 ; Calcular longitud del string
+    mov rdx, rax                ; Mover longitud a rdx
     
-    mov rax, 1                  ; sys_write
-    mov rdi, 1                  ; stdout
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    syscall                     ; llamar al sistema
     
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rbx
-    pop rax
-    ret
+    pop rdi                     ; Restaurar registro rdi
+    pop rsi                     ; Restaurar registro rsi
+    pop rdx                     ; Restaurar registro rdx
+    pop rcx                     ; Restaurar registro rcx
+    pop rbx                     ; Restaurar registro rbx
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 imprimir_nueva_linea:
-    push rax
-    push rdi
-    push rsi
-    push rdx
+    push rax                    ; Guardar registro rax
+    push rdi                    ; Guardar registro rdi
+    push rsi                    ; Guardar registro rsi
+    push rdx                    ; Guardar registro rdx
     
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, nueva_linea_msg    ; Solo "\n"
-    mov rdx, 1
-    syscall
+    mov rax, 1                  ; syscall: sys_write
+    mov rdi, 1                  ; file descriptor: stdout
+    mov rsi, nueva_linea_msg    ; mensaje de nueva línea
+    mov rdx, 1                  ; longitud: 1 byte
+    syscall                     ; llamar al sistema
     
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-    ret
+    pop rdx                     ; Restaurar registro rdx
+    pop rsi                     ; Restaurar registro rsi
+    pop rdi                     ; Restaurar registro rdi
+    pop rax                     ; Restaurar registro rax
+    ret                         ; Retornar de la función
 
 ; ========================================
 ; Utilidades
 strlen:
-    push rcx
-    push rdi
+    push rcx                    ; Guardar registro rcx
+    push rdi                    ; Guardar registro rdi
     
-    mov rdi, rsi                ; Puntero al string
-    xor rcx, rcx
-    not rcx                     ; RCX = -1
-    xor al, al                  ; Buscar cero
-    cld                         ; Dirección forward
-    repne scasb                 ; Buscar terminador
-    not rcx                     ; Complemento
-    dec rcx                     ; Ajustar
-    mov rax, rcx                ; Longitud en rax
+    mov rdi, rsi                ; Copiar puntero al string
+    xor rcx, rcx                ; Limpiar contador
+    not rcx                     ; Invertir bits (rcx = -1)
+    xor al, al                  ; Buscar byte cero (terminador)
+    cld                         ; Dirección forward (incremento)
+    repne scasb                 ; Buscar terminador del string
+    not rcx                     ; Complementar para obtener longitud
+    dec rcx                     ; Ajustar longitud
+    mov rax, rcx                ; Devolver longitud en rax
     
-    pop rdi
-    pop rcx
-    ret
+    pop rdi                     ; Restaurar registro rdi
+    pop rcx                     ; Restaurar registro rcx
+    ret                         ; Retornar de la función
 
 int_to_string:
-    push rbx
-    push rcx
-    push rdx
-    push rdi
+    push rbx                    ; Guardar registro rbx
+    push rcx                    ; Guardar registro rcx
+    push rdx                    ; Guardar registro rdx
+    push rdi                    ; Guardar registro rdi
     
-    mov rbx, 10                 ; Base decimal
-    xor rcx, rcx                ; Contador dígitos
+    mov rbx, 10                 ; Base decimal para conversión
+    xor rcx, rcx                ; Inicializar contador de dígitos
     
-    test rax, rax               ; ¿Es cero?
-    jnz convert_loop
-    mov byte [rdi - 1], '0'     ; Poner '0'
-    dec rdi
-    inc rcx
-    jmp done_convert
+    test rax, rax               ; Verificar si número es cero
+    jnz convert_loop            ; Saltar si no es cero
+    mov byte [rdi - 1], '0'     ; Poner carácter '0'
+    dec rdi                     ; Ajustar puntero
+    inc rcx                     ; Incrementar contador de dígitos
+    jmp done_convert            ; Saltar al final
     
 convert_loop:
-    xor rdx, rdx
-    div rbx                     ; RAX = cociente, RDX = resto
-    add dl, '0'                 ; Convertir a ASCII
-    dec rdi                     ; Escribir hacia atrás
+    xor rdx, rdx                ; Limpiar registro para división
+    div rbx                     ; Dividir rax por 10
+    add dl, '0'                 ; Convertir resto a ASCII
+    dec rdi                     ; Mover puntero hacia atrás
     mov [rdi], dl               ; Guardar dígito
-    inc rcx                     ; Contar dígito
-    test rax, rax
+    inc rcx                     ; Incrementar contador de dígitos
+    test rax, rax               ; Verificar si cociente es cero
     jnz convert_loop            ; Continuar si no es cero
     
 done_convert:
-    pop rdi
-    pop rdx
-    pop rcx
-    pop rbx
-    ret
+    pop rdi                     ; Restaurar registro rdi
+    pop rdx                     ; Restaurar registro rdx
+    pop rcx                     ; Restaurar registro rcx
+    pop rbx                     ; Restaurar registro rbx
+    ret                         ; Retornar de la función
     
 
 
