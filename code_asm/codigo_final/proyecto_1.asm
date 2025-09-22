@@ -80,7 +80,7 @@ _start:
     syscall
     cmp rax, 0                                                                        ;Por si hay un fallo que el archivo no se pudo abrir 
     jl Fin_programa 
-    call datos_C                                                                      ; Procesar datos de configuración
+    call datos_configuracion                                                                      ; Procesar datos de configuración
     
 
 ; Abrir archivo de inventario
@@ -100,7 +100,7 @@ _start:
     syscall
     call GuardarNombresFrutas
     call Cantidad_fruta
-    call OrdenarxNombre
+    call Ordenamiento_bubble_sort
     call GenerarHistograma    
 
     jmp funcional                                                                     ;Se lee con exito ambos archivos
@@ -198,7 +198,7 @@ _tercera:
 ;////////////////////////////////////// Recoleccion de datos de la configuracion///////////////////////
 _segunda:
     syscall
-datos_C:
+datos_configuracion:
     mov rsi, buffer_confg                   ; Apuntar al inicio del buffer de configuración
     mov rdi, datos_config                   ; Apuntar al buffer donde guardaremos los datos                                
 buscar_dato:            
@@ -428,7 +428,7 @@ fin_convert_cantidad:
 ; Descripción: Ordena la lista de frutas alfabéticamente usando Bubble Sort
 ; ////////////////////////////////////////////////////////////////////////////////
 
-OrdenarxNombre:
+Ordenamiento_bubble_sort:
     push r12                    ; Guardar registro r12
     push r13                    ; Guardar registro r13
     push r14                    ; Guardar registro r14
