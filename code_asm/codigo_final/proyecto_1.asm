@@ -22,8 +22,10 @@ section .data
     ansi_esc            db 0x1B           ; ESC para secuencias ANSI
     ansi_open           db "[", 0         ; inicio secuencia ANSI
     ansi_m              db "m", 0         ; fin secuencia ANSI
-    ansi_reset_completo db 0x1B, "[0m", 0 ; reset de formato ANSI
+    ansi_reset_completo db 0x1B, "[0m", 0 ; reset de formato ANSI 
     ansi_reset_len      equ $ - ansi_reset_completo ; longitud de reset
+
+    
 
 section .bss
 ; /////////////////////////////////////// buffer para lectura general ////////////////////////////////////////////////////////////////////
@@ -892,35 +894,49 @@ imprimir_caracter:
     pop rdi                     ; Restaurar registro rdi
     ret                         ; Retornar de la función
 
-imprimir_numero:
-    push rax                    ; Guardar registro rax
-    push rbx                    ; Guardar registro rbx
-    push rcx                    ; Guardar registro rcx
-    push rdx                    ; Guardar registro rdx
-    push rsi                    ; Guardar registro rsi
-    push rdi                    ; Guardar registro rdi
+imprimir_numero:                 ; función: imprime el número en RAX
+    push rbx                     ; guardar RBX
+    push rcx                     ; guardar RCX
+    push rdx                     ; guardar RDX
+    push rsi                     ; guardar RSI
+    push rdi                     ; guardar RDI
     
-    ; Convertir número a string
-    mov rdi, num_buffer + 18    ; Buffer grande para conversión
-    mov byte [rdi], 0           ; Agregar terminador nulo
-    call int_to_string          ; Llamar función de conversión
+    mov rdi, num_buffer + 19     ; RDI = puntero al final del buffer
+    mov byte [rdi], 0            ; escribir terminador nulo
+    dec rdi                      ; retroceder un byte
+    mov rbx, 10                  ; RBX = 10 (base decimal)
     
-    ; Encontrar inicio del string
-    mov rsi, rdi                ; Puntero al string convertido
-    call strlen                 ; Calcular longitud del string
-    mov rdx, rax                ; Mover longitud a rdx
+    test rax, rax                ; ¿RAX == 0?
+    jnz .convert                 ; si no es 0, convertir
+    mov byte [rdi], '0'          ; si es 0, escribir '0'
+    dec rdi                      ; retroceder puntero
+    jmp .print                   ; ir a imprimir
     
-    mov rax, 1                  ; syscall: sys_write
-    mov rdi, 1                  ; file descriptor: stdout
-    syscall                     ; llamar al sistema
+.convert:                        ; etiqueta conversión
+    xor rdx, rdx                 ; RDX = 0 (para DIV)
+    div rbx                      ; dividir RDX:RAX / RBX → RAX=cociente, RDX=resto
+    add dl, '0'                  ; convertir resto a ASCII
+    mov [rdi], dl                ; almacenar dígito en buffer
+    dec rdi                      ; mover a la izquierda en el buffer
+    test rax, rax                ; ¿cociente == 0?
+    jnz .convert                 ; si no, repetir
     
-    pop rdi                     ; Restaurar registro rdi
-    pop rsi                     ; Restaurar registro rsi
-    pop rdx                     ; Restaurar registro rdx
-    pop rcx                     ; Restaurar registro rcx
-    pop rbx                     ; Restaurar registro rbx
-    pop rax                     ; Restaurar registro rax
-    ret                         ; Retornar de la función
+.print:                          ; etiqueta impresión
+    inc rdi                      ; ajustar al primer carácter válido
+    mov rsi, rdi                 ; RSI = inicio del string
+    mov rcx, num_buffer + 20     ; RCX = fin del buffer + 1
+    sub rcx, rdi                 ; RCX = longitud del string
+    mov rdx, rcx                 ; RDX = longitud (arg para write)
+    mov rax, 1                   ; syscall number: sys_write
+    mov rdi, 1                   ; fd = stdout
+    syscall                      ; llamar a write
+    
+    pop rdi                      ; restaurar RDI
+    pop rsi                      ; restaurar RSI
+    pop rdx                      ; restaurar RDX
+    pop rcx                      ; restaurar RCX
+    pop rbx                      ; restaurar RBX
+    ret                          ; retornar
 
 imprimir_nueva_linea:
     push rax                    ; Guardar registro rax
